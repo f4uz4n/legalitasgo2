@@ -747,6 +747,10 @@
                     <i class="bi bi-database-gear"></i> Backup &amp; Reset Data
                     <span class="badge bg-light text-primary border ms-auto" style="font-size: 0.65rem;">SISTEM</span>
                 </a>
+                <a href="{{ route('report-pdf.form') }}" class="nav-link {{ request()->routeIs('report-pdf.*') ? 'active' : '' }}">
+                    <i class="bi bi-file-earmark-pdf-fill text-danger"></i> Download Laporan PDF
+                    <span class="badge bg-danger text-white ms-auto" style="font-size: 0.65rem;">PDF</span>
+                </a>
                 <a href="{{ route('profile.edit') }}" class="nav-link {{ request()->routeIs('profile.*') ? 'active' : '' }}">
                     <i class="bi bi-person-circle"></i> Akun Pengelola
                 </a>

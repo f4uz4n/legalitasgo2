@@ -285,7 +285,7 @@
             </div>
 
             <div class="d-flex align-items-center gap-2">
-                <div class="pulse-badge me-2">
+                <div class="pulse-badge me-2 d-none d-sm-flex">
                     <span class="pulse-dot"></span>
                     <span>LIVE REALTIME</span>
                 </div>
@@ -294,11 +294,12 @@
                     <i class="bi bi-window-stack"></i> <span class="d-none d-md-inline">Lihat Timeline (Popup Modal)</span>
                 </button>
                 <!-- PWA Install Button Warga -->
-                <button type="button" class="btn btn-outline-success btn-sm rounded-3 fw-bold d-inline-flex align-items-center gap-1 shadow-sm btn-trigger-pwa-install" title="Pasang Aplikasi di HP">
+                <button type="button" class="btn btn-outline-success btn-sm rounded-3 fw-bold d-inline-flex align-items-center gap-1 shadow-sm btn-trigger-pwa-install d-none d-sm-inline-flex" title="Pasang Aplikasi di HP">
                     <i class="bi bi-phone"></i> <span class="d-none d-sm-inline">Pasang App</span>
                 </button>
-                <a href="{{ route('login') }}" class="btn btn-outline-secondary btn-sm rounded-3 fw-semibold d-none d-lg-inline-flex align-items-center gap-1">
-                    <i class="bi bi-lock-fill"></i> Pengelola
+                <!-- Tombol Login Pengelola — selalu tampil di semua ukuran layar -->
+                <a href="{{ route('login') }}" class="btn btn-outline-secondary btn-sm rounded-3 fw-semibold d-inline-flex align-items-center gap-1" title="Login Pengelola">
+                    <i class="bi bi-lock-fill"></i> <span class="d-none d-sm-inline">Pengelola</span>
                 </a>
             </div>
         </div>

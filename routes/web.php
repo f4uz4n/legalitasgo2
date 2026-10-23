@@ -11,6 +11,7 @@ use App\Http\Controllers\PublicReportController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\SystemController;
 use App\Http\Controllers\ArsipDokumenController;
+use App\Http\Controllers\ReportPdfController;
 use Illuminate\Support\Facades\Route;
 
 // ─── Public routes (tanpa login) ───────────────────────────────────────────────
@@ -95,6 +96,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/sistem/backup', [SystemController::class, 'backup'])->name('system.backup');
         Route::post('/sistem/reset', [SystemController::class, 'reset'])->name('system.reset');
         Route::get('/sistem/backup/{filename}', [SystemController::class, 'downloadBackup'])->name('system.backup.download');
+
+        // Laporan PDF — Download/Print
+        Route::get('/laporan/pdf', [ReportPdfController::class, 'form'])->name('report-pdf.form');
+        Route::post('/laporan/pdf/preview', [ReportPdfController::class, 'preview'])->name('report-pdf.preview');
     });
 
     // Legalitas Show (warga bisa lihat)

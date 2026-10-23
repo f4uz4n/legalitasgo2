@@ -29,6 +29,9 @@
             <a href="{{ route('public.report') }}" target="_blank" class="btn btn-light-blue btn-sm d-flex align-items-center gap-1">
                 <i class="bi bi-broadcast text-primary"></i> Laporan Live Warga
             </a>
+            <a href="{{ route('report-pdf.form') }}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
+                <i class="bi bi-file-earmark-pdf-fill text-danger"></i> Download Laporan PDF
+            </a>
         </div>
     </div>
 </div>

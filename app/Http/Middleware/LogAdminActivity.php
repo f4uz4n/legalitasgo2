@@ -100,11 +100,11 @@ class LogAdminActivity
         if (str_starts_with($routeName ?? '', 'penghuni') || str_starts_with($path, 'penghuni')) {
             $module = 'Data Warga / Kavling';
             if ($method === 'POST') {
-                $nama = $request->input('nama_penghuni', 'Warga');
+                $nama = $request->input('nama_lengkap', $request->input('nama_penghuni', 'Warga'));
                 $blok = $request->input('blok_kavling', '-');
                 $desc = "Menambahkan warga / kavling baru: {$nama} (Blok {$blok})";
             } elseif (in_array($method, ['PUT', 'PATCH'])) {
-                $nama = $request->input('nama_penghuni', 'Warga');
+                $nama = $request->input('nama_lengkap', $request->input('nama_penghuni', 'Warga'));
                 $blok = $request->input('blok_kavling', '-');
                 $desc = "Memperbarui data warga kavling: {$nama} (Blok {$blok})";
             } elseif ($method === 'DELETE') {

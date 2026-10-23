@@ -531,8 +531,8 @@
                 @foreach($angsuranByPenghuni as $i => $ang)
                 <tr>
                     <td>{{ $i + 1 }}</td>
-                    <td>{{ $ang->penghuni->nama_penghuni ?? '-' }}</td>
-                    <td class="text-center">{{ $ang->penghuni->nomor_kavling ?? '-' }}</td>
+                    <td>{{ $ang->penghuni->nama_lengkap ?? '-' }}</td>
+                    <td class="text-center">{{ $ang->penghuni->blok_kavling ?? '-' }}</td>
                     <td class="text-center">Ke-{{ $ang->angsuran_ke }}</td>
                     <td>{{ $ang->tanggal_bayar ? \Carbon\Carbon::parse($ang->tanggal_bayar)->format('d/m/Y') : '-' }}</td>
                     <td class="text-right">Rp {{ number_format($ang->jumlah_bayar, 0, ',', '.') }}</td>
@@ -596,8 +596,8 @@
                 @foreach($daftarPenghuni as $i => $p)
                 <tr>
                     <td>{{ $i + 1 }}</td>
-                    <td><strong>{{ $p->nama_penghuni }}</strong></td>
-                    <td class="text-center">{{ $p->nomor_kavling ?? '-' }}</td>
+                    <td><strong>{{ $p->nama_lengkap }}</strong></td>
+                    <td class="text-center">{{ $p->blok_kavling ?? '-' }}</td>
                     <td class="text-right">{{ number_format($p->harga_rumah, 0, ',', '.') }}</td>
                     <td class="text-right">{{ number_format($p->uang_muka, 0, ',', '.') }}</td>
                     <td class="text-right">{{ number_format($p->sisa_angsuran ?? 0, 0, ',', '.') }}</td>

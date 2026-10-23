@@ -129,7 +129,7 @@ class ReportPdfController extends Controller
         ];
 
         // ── Data Penghuni Lengkap ──────────────────────────────────────────
-        $daftarPenghuni = Penghuni::with(['angsuran'])->orderBy('nama_penghuni')->get();
+        $daftarPenghuni = Penghuni::with(['angsuran'])->orderBy('nama_lengkap')->get();
 
         // ── Data Angsuran yang Sudah Dibayar ──────────────────────────────
         $angsuranByPenghuni = Angsuran::with('penghuni')

@@ -36,9 +36,34 @@ class User extends Authenticatable
         return $this->role === 'warga';
     }
 
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === 'superadmin' || $this->role === 'admin' || empty($this->role);
+    }
+
+    public function isOperator(): bool
+    {
+        return $this->role === 'operator';
+    }
+
     public function isAdmin(): bool
     {
-        return $this->role === 'admin' || empty($this->role);
+        return $this->isSuperAdmin() || $this->isOperator();
+    }
+
+    public function peranLabel(): string
+    {
+        if ($this->isWarga()) {
+            return 'Warga Kavling';
+        }
+        if ($this->isOperator()) {
+            return 'Operator';
+        }
+        if ($this->isSuperAdmin()) {
+            return 'Superadmin';
+        }
+
+        return 'Pengelola';
     }
 
     public function isActive(): bool

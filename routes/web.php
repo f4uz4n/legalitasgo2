@@ -12,6 +12,7 @@ use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\SystemController;
 use App\Http\Controllers\ArsipDokumenController;
 use App\Http\Controllers\ReportPdfController;
+use App\Http\Controllers\OperatorController;
 use Illuminate\Support\Facades\Route;
 
 // ─── Public routes (tanpa login) ───────────────────────────────────────────────
@@ -96,6 +97,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/sistem/backup', [SystemController::class, 'backup'])->name('system.backup');
         Route::post('/sistem/reset', [SystemController::class, 'reset'])->name('system.reset');
         Route::get('/sistem/backup/{filename}', [SystemController::class, 'downloadBackup'])->name('system.backup.download');
+
+        Route::middleware('superadmin')->group(function () {
+            Route::get('/operator', [OperatorController::class, 'index'])->name('operator.index');
+            Route::post('/operator', [OperatorController::class, 'store'])->name('operator.store');
+            Route::put('/operator/{user}', [OperatorController::class, 'update'])->name('operator.update');
+            Route::delete('/operator/{user}', [OperatorController::class, 'destroy'])->name('operator.destroy');
+        });
 
         // Laporan PDF — Download/Print
         Route::get('/laporan/pdf', [ReportPdfController::class, 'form'])->name('report-pdf.form');

@@ -740,6 +740,11 @@
                 </a>
 
                 <div class="nav-section">Pengaturan &amp; Sistem</div>
+                @if(Auth::user()->isSuperAdmin())
+                <a href="{{ route('operator.index') }}" class="nav-link {{ request()->routeIs('operator.*') ? 'active' : '' }}">
+                    <i class="bi bi-person-plus-fill"></i> Akun Operator
+                </a>
+                @endif
                 <a href="{{ route('perumahan.index') }}" class="nav-link {{ request()->routeIs('perumahan.*') ? 'active' : '' }}">
                     <i class="bi bi-gear-wide-connected"></i> Profil Perumahan
                 </a>
@@ -773,7 +778,7 @@
                     <div class="overflow-hidden text-truncate">
                         <div class="fw-bold text-dark small text-truncate" style="line-height: 1.2;">{{ Auth::user()->name ?? 'Pengguna' }}</div>
                         <div class="text-muted" style="font-size: 0.7rem;">
-                            {{ Auth::user()->isWarga() ? 'Warga Kavling' : 'Administrator' }}
+                            {{ Auth::user()->peranLabel() }}
                         </div>
                     </div>
                 </div>
@@ -781,7 +786,7 @@
             <form method="POST" action="{{ route('logout') }}" class="m-0">
                 @csrf
                 <button type="submit" class="btn btn-outline-danger btn-sm w-100 rounded-3 text-start px-2 py-1.5 fw-semibold d-flex align-items-center gap-2" style="font-size: 0.8rem;">
-                    <i class="bi bi-box-arrow-left"></i> Logout {{ Auth::user()->isWarga() ? 'Warga' : 'Pengelola' }}
+                    <i class="bi bi-box-arrow-left"></i> Logout {{ Auth::user()->peranLabel() }}
                 </button>
             </form>
         </div>
@@ -827,7 +832,7 @@
                     @if(Auth::check() && Auth::user()->isWarga())
                         <div class="text-primary fw-semibold" style="font-size: 0.72rem;">Warga Blok {{ Auth::user()->penghuni->blok_kavling ?? '-' }}</div>
                     @else
-                        <div class="text-muted" style="font-size: 0.72rem;">Pengelola Perumahan</div>
+                        <div class="text-muted" style="font-size: 0.72rem;">{{ Auth::user()->peranLabel() }}</div>
                     @endif
                 </div>
             </div>

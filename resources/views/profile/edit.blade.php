@@ -63,7 +63,7 @@
                             </span>
                         @else
                             <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
-                                <i class="bi bi-shield-lock-fill me-1"></i> Administrator Pengelola
+                                <i class="bi bi-shield-lock-fill me-1"></i> {{ $user->peranLabel() }}
                             </span>
                         @endif
                         <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
@@ -118,7 +118,7 @@
 
                     <div class="col-12">
                         <label class="form-label small fw-bold text-muted">Hak Akses Sistem</label>
-                        <input type="text" class="form-control bg-light" value="{{ $user->isWarga() ? 'Warga Penghuni (Portal Unit & Angsuran)' : 'Administrator Pengelola Perumahan' }}" readonly disabled>
+                        <input type="text" class="form-control bg-light" value="{{ $user->isWarga() ? 'Warga Penghuni (Portal Unit & Angsuran)' : ($user->isOperator() ? 'Operator Pengelolaan Perumahan' : 'Superadmin Pengelola Perumahan') }}" readonly disabled>
                     </div>
                 </div>
 

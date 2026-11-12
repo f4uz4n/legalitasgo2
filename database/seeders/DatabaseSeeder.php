@@ -25,6 +25,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Pengelola Perumahan',
             'email' => 'admin@legalitasgo.com',
             'password' => Hash::make('password'),
+            'role' => 'superadmin',
         ]);
 
         // 2. Kategori Kas Masuk & Keluar

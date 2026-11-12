@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', $penghuni->nama_lengkap)
 @section('breadcrumb')
-<li class="breadcrumb-item"><a href="{{ route('penghuni.index') }}">Penghuni</a></li>
+<li class="breadcrumb-item"><a href="{{ route('penghuni.index') }}">Pengangsur</a></li>
 <li class="breadcrumb-item active">{{ $penghuni->nama_lengkap }}</li>
 @endsection
 
@@ -9,10 +9,10 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h4 class="fw-bold mb-0"><i class="bi bi-person-fill text-primary"></i> {{ $penghuni->nama_lengkap }}</h4>
     <div class="d-flex gap-2">
-        <a href="{{ route('penghuni.edit', $penghuni) }}" class="btn btn-outline-primary">
-            <i class="bi bi-pencil-square"></i> Edit Penghuni
+            <a href="{{ route('penghuni.edit', $penghuni) }}" class="btn btn-outline-primary">
+            <i class="bi bi-pencil-square"></i> Edit Pengangsur
         </a>
-        <a href="{{ route('pembayaran.create', ['angsuran_id' => $penghuni->angsuran->where('status', 'belum_bayar')->first()?->id]) }}" class="btn btn-primary">
+        <a href="{{ route('pembayaran.create', ['angsuran_id' => $penghuni->angsuran->first(fn ($a) => $a->status !== 'lunas')?->id]) }}" class="btn btn-primary">
             <i class="bi bi-credit-card-2-front"></i> Bayar Angsuran
         </a>
     </div>
@@ -76,13 +76,17 @@
     </div>
     <div class="col-md-4">
         <div class="content-card h-100">
-            <div class="card-header"><span>Data Keuangan</span></div>
+            <div class="card-header"><span>Rekap Pembayaran</span></div>
             <div class="card-body">
-                <p><strong>Harga Rumah:</strong><br><span class="fs-5 fw-bold text-primary">Rp {{ number_format($penghuni->harga_rumah, 0, ',', '.') }}</span></p>
+                <p class="mb-2"><strong>Pembayaran:</strong> {{ $penghuni->jenis_pembayaran_label }}</p>
+                <p class="mb-2"><strong>Tahun Pembelian:</strong> {{ $penghuni->tahun_pembelian ?? '-' }}</p>
+                <p><strong>Harga:</strong><br><span class="fs-5 fw-bold text-primary">Rp {{ number_format($penghuni->harga_rumah, 0, ',', '.') }}</span></p>
                 <p><strong>Uang Muka:</strong> Rp {{ number_format($penghuni->uang_muka, 0, ',', '.') }}</p>
-                <p><strong>Sisa Angsuran:</strong> Rp {{ number_format($penghuni->sisa_angsuran, 0, ',', '.') }}</p>
-                <p><strong>Tenor:</strong> {{ $penghuni->tenor_bulan }} bulan</p>
-                <p><strong>Angsuran/Bulan:</strong> Rp {{ number_format($penghuni->angsuran_bulanan, 0, ',', '.') }}</p>
+                <p><strong>Angsuran:</strong> Rp {{ number_format($penghuni->angsuran_bulanan, 0, ',', '.') }}</p>
+                <p><strong>Tempo:</strong> {{ $penghuni->tempo_label }}</p>
+                <p><strong>Sisa Tempo:</strong> {{ $penghuni->sisa_tempo_label }}</p>
+                <p><strong>Tunggakan:</strong> <span class="{{ (int) $penghuni->tunggakan > 0 ? 'text-danger fw-bold' : '' }}">{{ $penghuni->tunggakan_label }}</span></p>
+                <p><strong>Sisa Pembayaran:</strong> <span class="fw-bold text-danger">Rp {{ number_format($penghuni->sisa_angsuran, 0, ',', '.') }}</span></p>
                 <p><strong>Tanggal Akad:</strong> {{ $penghuni->tanggal_akad?->format('d/m/Y') ?? '-' }}</p>
                 <div class="mt-3">
                     <small class="text-muted fw-semibold">Progress Pembayaran</small>

@@ -319,6 +319,15 @@
                     </p>
                 </div>
                 <div class="col-lg-4 text-lg-end mt-4 mt-lg-0">
+                    <form method="GET" action="{{ route('public.report') }}" class="d-inline-flex align-items-center gap-2 mb-3 bg-white border rounded-4 px-3 py-2">
+                        <label for="tahun-portal" class="small fw-semibold text-dark mb-0">Tahun</label>
+                        <select id="tahun-portal" name="tahun" class="form-select form-select-sm" style="width: 9rem;" onchange="this.form.submit()">
+                            <option value="semua" @selected($tahunDipilih === null)>Semua tahun</option>
+                            @foreach($daftarTahun as $tahun)
+                                <option value="{{ $tahun }}" @selected($tahunDipilih === (int) $tahun)>{{ $tahun }}</option>
+                            @endforeach
+                        </select>
+                    </form>
                     <div class="p-3 bg-light rounded-4 border d-inline-block text-start">
                         <div class="small text-muted mb-1"><i class="bi bi-clock-history me-1"></i> Terakhir Diperbarui:</div>
                         <div class="fw-bold text-dark fs-6" id="lastUpdatedBadge">{{ $lastUpdated->translatedFormat('d F Y - H:i:s') }} WIB</div>
@@ -344,15 +353,16 @@
                         Rp {{ number_format($totalKasMasuk, 0, ',', '.') }}
                     </div>
                     <div class="small text-dark fw-semibold mt-1">
-                        Penerimaan Pembayaran DP & Cicilan Angsuran
+                        Kas masuk {{ $tahunDipilih ? 'tahun ' . $tahunDipilih : 'semua tahun' }}
                     </div>
                     <div class="progress mt-3 bg-white border" style="height: 8px;">
                         <div class="progress-bar bg-primary" id="progressBar" style="width: {{ min($progressCollecting, 100) }}%"></div>
                     </div>
                     <div class="d-flex justify-content-between align-items-center mt-1 text-muted small">
-                        <span>Progress Collecting:</span>
+                        <span>Progress angsuran diinput:</span>
                         <strong class="text-dark" id="valProgress">{{ $progressCollecting }}%</strong>
                     </div>
+                    <div class="small text-muted mt-1">Tidak termasuk uang muka. Dihitung dari pembayaran angsuran yang dicatat.</div>
                 </div>
             </div>
 
@@ -567,7 +577,7 @@
                             <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
                                 <div>
                                     <h6 class="fw-bold mb-0 text-dark">Grafik Arus Kas Bulanan (Penerimaan vs Pengeluaran)</h6>
-                                    <small class="text-muted">Data perbandingan 6 bulan terakhir</small>
+                                    <small class="text-muted">{{ $tahunDipilih ? 'Januari–Desember ' . $tahunDipilih : '12 bulan terakhir' }}</small>
                                 </div>
                             </div>
                             <div style="height: 270px; position: relative;">
@@ -1084,6 +1094,20 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
+        function labelSumbuRupiah(nilai) {
+            const angka = Number(nilai) || 0;
+            const tanda = angka < 0 ? '-' : '';
+            const abs = Math.abs(angka);
+            const rapikan = function (n) {
+                const bulat = Math.round(n * 10) / 10;
+                return bulat.toLocaleString('id-ID', { maximumFractionDigits: Number.isInteger(bulat) ? 0 : 1 });
+            };
+            if (abs >= 1000000000) return tanda + 'Rp ' + rapikan(abs / 1000000000) + ' M';
+            if (abs >= 1000000) return tanda + 'Rp ' + rapikan(abs / 1000000) + ' Jt';
+            if (abs >= 1000) return tanda + 'Rp ' + rapikan(abs / 1000) + ' Rb';
+            return tanda + 'Rp ' + Math.round(abs).toLocaleString('id-ID');
+        }
+
         function formatRupiah(number) {
             return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number);
         }
@@ -1153,6 +1177,25 @@
             const masukData = monthlyData.map(item => item.masuk);
             const keluarData = monthlyData.map(item => item.keluar);
 
+            const puncakKas = Math.max(0, ...masukData, ...keluarData);
+            const sumbuKasPortal = {
+                beginAtZero: true,
+                grace: '8%',
+                grid: { color: '#f1f5f9' },
+                ticks: {
+                    maxTicksLimit: 5,
+                    padding: 8,
+                    color: '#64748b',
+                    callback: function (val) {
+                        return labelSumbuRupiah(val);
+                    }
+                }
+            };
+            if (puncakKas <= 0) {
+                sumbuKasPortal.suggestedMax = 1000000;
+                sumbuKasPortal.ticks.stepSize = 250000;
+            }
+
             const ctxCash = document.getElementById('publicCashflowChart').getContext('2d');
             new Chart(ctxCash, {
                 type: 'bar',
@@ -1195,16 +1238,13 @@
                             }
                         }
                     },
+                    layout: { padding: { left: 4, right: 8 } },
                     scales: {
-                        x: { grid: { display: false } },
-                        y: {
-                            grid: { color: '#f1f5f9' },
-                            ticks: {
-                                callback: function(val) {
-                                    return 'Rp ' + (val / 1000000) + ' Jt';
-                                }
-                            }
-                        }
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#64748b', maxRotation: 0, autoSkip: true }
+                        },
+                        y: sumbuKasPortal
                     }
                 }
             });
@@ -1236,7 +1276,7 @@
 
             // Realtime Auto-Polling (every 15 seconds)
             setInterval(function() {
-                fetch('{{ route('api.public.report') }}')
+                fetch('{{ route('api.public.report') }}?tahun={{ $tahunDipilih ?? 'semua' }}')
                     .then(res => res.json())
                     .then(data => {
                         document.getElementById('valTotalMasuk').innerText = formatRupiah(data.totalKasMasuk);

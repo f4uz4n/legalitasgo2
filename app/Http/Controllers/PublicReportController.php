@@ -15,8 +15,12 @@ use Illuminate\Http\Request;
 
 class PublicReportController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $tahunDipilih = $this->tahunDariRequest($request);
+        $daftarTahun = $this->daftarTahun();
+        $ringkasAngsuran = $this->ringkasanAngsuran($tahunDipilih);
+
         // Single Perumahan
         $perumahan = Perumahan::first() ?? new Perumahan([
             'nama_perumahan' => 'Griya Harmoni Residence',
@@ -29,24 +33,29 @@ class PublicReportController extends Controller
         $penghuniLunas = Penghuni::where('status', 'lunas')->count();
         $penghuniAktif = Penghuni::where('status', 'aktif')->count();
 
-        // Collecting progress
-        $totalTarget = Penghuni::sum('harga_rumah');
-        $totalUangMuka = Penghuni::sum('uang_muka');
-        $totalAngsuranTerbayar = Angsuran::where('status', 'lunas')->sum('jumlah_bayar');
-        $totalTerkumpul = $totalUangMuka + $totalAngsuranTerbayar;
-        $progressCollecting = $totalTarget > 0 ? round(($totalTerkumpul / $totalTarget) * 100, 1) : 0;
+        // Progress hanya dari angsuran yang sudah diinput, tanpa uang muka.
+        $totalTarget = $ringkasAngsuran['target'];
+        $totalTerkumpul = $ringkasAngsuran['terbayar'];
+        $progressCollecting = $ringkasAngsuran['persen'];
 
         // Cash flow summary
-        $totalKasMasuk = KasMasuk::sum('jumlah');
-        $totalKasKeluar = KasKeluar::sum('jumlah');
+        $kasMasuk = KasMasuk::query();
+        $kasKeluar = KasKeluar::query();
+        if ($tahunDipilih !== null) {
+            $kasMasuk->whereYear('tanggal', $tahunDipilih);
+            $kasKeluar->whereYear('tanggal', $tahunDipilih);
+        }
+        $totalKasMasuk = (clone $kasMasuk)->sum('jumlah');
+        $totalKasKeluar = (clone $kasKeluar)->sum('jumlah');
         $saldoKas = $totalKasMasuk - $totalKasKeluar;
 
         // Uang masuk by bulan secara akumulasi kumulatif (running total)
-        $monthlyIncomeRaw = KasMasuk::selectRaw("YEAR(tanggal) as tahun, MONTH(tanggal) as bulan, COUNT(*) as frekuensi, SUM(jumlah) as total_nominal")
+        $pemasukanBulanan = KasMasuk::selectRaw("YEAR(tanggal) as tahun, MONTH(tanggal) as bulan, COUNT(*) as frekuensi, SUM(jumlah) as total_nominal")
+            ->when($tahunDipilih !== null, fn ($q) => $q->whereYear('tanggal', $tahunDipilih))
             ->groupBy('tahun', 'bulan')
             ->orderBy('tahun', 'asc')
-            ->orderBy('bulan', 'asc')
-            ->get();
+            ->orderBy('bulan', 'asc');
+        $monthlyIncomeRaw = $pemasukanBulanan->get();
 
         $runningTotal = 0;
         $uangMasukByBulan = [];
@@ -70,28 +79,13 @@ class PublicReportController extends Controller
 
         // Rekapitulasi uang masuk harian (tetap disediakan jika warga ingin cek rincian harian)
         $uangMasukPerTanggal = KasMasuk::selectRaw('DATE(tanggal) as tgl, COUNT(*) as frekuensi, SUM(jumlah) as total_nominal')
+            ->when($tahunDipilih !== null, fn ($q) => $q->whereYear('tanggal', $tahunDipilih))
             ->groupBy('tgl')
             ->orderBy('tgl', 'desc')
             ->take(30)
             ->get();
 
-        // Monthly chart data (last 6 months)
-        $monthlyData = [];
-        for ($i = 5; $i >= 0; $i--) {
-            $date = Carbon::now()->subMonths($i);
-            $masuk = KasMasuk::whereYear('tanggal', $date->year)
-                ->whereMonth('tanggal', $date->month)
-                ->sum('jumlah');
-            $keluar = KasKeluar::whereYear('tanggal', $date->year)
-                ->whereMonth('tanggal', $date->month)
-                ->sum('jumlah');
-
-            $monthlyData[] = [
-                'bulan' => $date->translatedFormat('M Y'),
-                'masuk' => (float) $masuk,
-                'keluar' => (float) $keluar,
-            ];
-        }
+        $monthlyData = $this->arusKasBulanan($tahunDipilih);
 
         // Legalitas summary
         $legalitasStats = [
@@ -112,6 +106,7 @@ class PublicReportController extends Controller
 
         // Transparent list of expenditures (Kas Keluar)
         $daftarPengeluaran = KasKeluar::with('kategori')
+            ->when($tahunDipilih !== null, fn ($q) => $q->whereYear('tanggal', $tahunDipilih))
             ->orderBy('tanggal', 'desc')
             ->take(12)
             ->get();
@@ -119,6 +114,7 @@ class PublicReportController extends Controller
         // Kas keluar per kategori
         $kasKeluarPerKategori = KasKeluar::selectRaw('kategori_kas_id, SUM(jumlah) as total')
             ->with('kategori')
+            ->when($tahunDipilih !== null, fn ($q) => $q->whereYear('tanggal', $tahunDipilih))
             ->groupBy('kategori_kas_id')
             ->get()
             ->map(function ($item) {
@@ -155,7 +151,9 @@ class PublicReportController extends Controller
             'timelines', 'daftarPengeluaran', 'kasKeluarPerKategori',
             'adminLogs', 'totalAdminLogs',
             'arsipPublik',
-            'lastUpdated'
+            'lastUpdated',
+            'tahunDipilih',
+            'daftarTahun'
         ));
     }
 
@@ -181,28 +179,107 @@ class PublicReportController extends Controller
         return view('public.timeline', compact('perumahan', 'timelines', 'lastUpdated'));
     }
 
-    public function apiData()
+    public function apiData(Request $request)
     {
-        // Realtime API endpoint
-        $totalKasMasuk = KasMasuk::sum('jumlah');
-        $totalKasKeluar = KasKeluar::sum('jumlah');
+        $tahunDipilih = $this->tahunDariRequest($request);
+        $ringkasAngsuran = $this->ringkasanAngsuran($tahunDipilih);
+
+        $kasMasuk = KasMasuk::query();
+        $kasKeluar = KasKeluar::query();
+        if ($tahunDipilih !== null) {
+            $kasMasuk->whereYear('tanggal', $tahunDipilih);
+            $kasKeluar->whereYear('tanggal', $tahunDipilih);
+        }
+        $totalKasMasuk = (float) $kasMasuk->sum('jumlah');
+        $totalKasKeluar = (float) $kasKeluar->sum('jumlah');
         $saldoKas = $totalKasMasuk - $totalKasKeluar;
 
-        $totalTarget = Penghuni::sum('harga_rumah');
-        $totalUangMuka = Penghuni::sum('uang_muka');
-        $totalAngsuranTerbayar = Angsuran::where('status', 'lunas')->sum('jumlah_bayar');
-        $totalTerkumpul = $totalUangMuka + $totalAngsuranTerbayar;
-        $progressCollecting = $totalTarget > 0 ? round(($totalTerkumpul / $totalTarget) * 100, 1) : 0;
-
         return response()->json([
-            'totalKasMasuk' => (float) $totalKasMasuk,
-            'totalKasKeluar' => (float) $totalKasKeluar,
-            'saldoKas' => (float) $saldoKas,
-            'totalTerkumpul' => (float) $totalTerkumpul,
-            'progressCollecting' => $progressCollecting,
+            'totalKasMasuk' => $totalKasMasuk,
+            'totalKasKeluar' => $totalKasKeluar,
+            'saldoKas' => $saldoKas,
+            'totalTerkumpul' => $ringkasAngsuran['terbayar'],
+            'progressCollecting' => $ringkasAngsuran['persen'],
             'penghuniLunas' => Penghuni::where('status', 'lunas')->count(),
             'penghuniAktif' => Penghuni::where('status', 'aktif')->count(),
             'lastUpdated' => now()->translatedFormat('d M Y H:i:s'),
         ]);
+    }
+
+    private function tahunDariRequest(Request $request): ?int
+    {
+        $nilai = $request->query('tahun');
+        if ($nilai === 'semua') {
+            return null;
+        }
+        if ($nilai === null || $nilai === '' || !ctype_digit((string) $nilai)) {
+            return (int) now()->year;
+        }
+
+        $tahun = (int) $nilai;
+        if ($tahun < 1990 || $tahun > (int) now()->year + 5) {
+            return (int) now()->year;
+        }
+
+        return $tahun;
+    }
+
+    private function daftarTahun()
+    {
+        $dariMasuk = KasMasuk::query()->whereNotNull('tanggal')->selectRaw('YEAR(tanggal) as tahun')->distinct()->pluck('tahun');
+        $dariKeluar = KasKeluar::query()->whereNotNull('tanggal')->selectRaw('YEAR(tanggal) as tahun')->distinct()->pluck('tahun');
+        $dariBayar = Angsuran::query()->whereNotNull('tanggal_bayar')->selectRaw('YEAR(tanggal_bayar) as tahun')->distinct()->pluck('tahun');
+
+        return collect([$dariMasuk, $dariKeluar, $dariBayar, [(int) now()->year]])
+            ->flatten()
+            ->map(fn ($tahun) => (int) $tahun)
+            ->filter(fn ($tahun) => $tahun >= 1990)
+            ->unique()
+            ->sortDesc()
+            ->values();
+    }
+
+    private function ringkasanAngsuran(?int $tahun): array
+    {
+        $terbayarQuery = Angsuran::query()->where('jumlah_bayar', '>', 0)->whereNotNull('tanggal_bayar');
+        $targetQuery = Angsuran::query();
+        if ($tahun !== null) {
+            $terbayarQuery->whereYear('tanggal_bayar', $tahun);
+            $targetQuery->whereYear('tanggal_jatuh_tempo', $tahun);
+        }
+
+        $terbayar = (float) $terbayarQuery->sum('jumlah_bayar');
+        $target = (float) $targetQuery->sum('jumlah_angsuran');
+
+        return [
+            'terbayar' => $terbayar,
+            'target' => $target,
+            'persen' => $target > 0 ? round(($terbayar / $target) * 100, 1) : 0,
+        ];
+    }
+
+    private function arusKasBulanan(?int $tahun): array
+    {
+        $bulan = [];
+        if ($tahun === null) {
+            for ($i = 11; $i >= 0; $i--) {
+                $bulan[] = Carbon::now()->startOfMonth()->subMonths($i);
+            }
+        } else {
+            for ($i = 1; $i <= 12; $i++) {
+                $bulan[] = Carbon::create($tahun, $i, 1)->startOfMonth();
+            }
+        }
+
+        $data = [];
+        foreach ($bulan as $date) {
+            $data[] = [
+                'bulan' => $date->translatedFormat($tahun === null ? 'M Y' : 'M'),
+                'masuk' => (float) KasMasuk::whereYear('tanggal', $date->year)->whereMonth('tanggal', $date->month)->sum('jumlah'),
+                'keluar' => (float) KasKeluar::whereYear('tanggal', $date->year)->whereMonth('tanggal', $date->month)->sum('jumlah'),
+            ];
+        }
+
+        return $data;
     }
 }

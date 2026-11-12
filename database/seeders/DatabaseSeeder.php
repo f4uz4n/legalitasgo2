@@ -79,6 +79,9 @@ class DatabaseSeeder extends Seeder
             $sisaAngsuran = $dw['harga'] - $uangMuka;
             $tenor = 60; // 5 tahun
             $tanggalAkad = Carbon::now()->subMonths(rand(6, 18));
+            $nominalAngsuran = round($sisaAngsuran / $tenor, 0);
+            $paidCount = $dw['lunas'] ? $tenor : rand(3, 14);
+            $sisaTempo = max(0, $tenor - $paidCount);
 
             $penghuni = Penghuni::create([
                 'perumahan_id' => $perumahan->id,
@@ -87,13 +90,17 @@ class DatabaseSeeder extends Seeder
                 'no_hp' => '0812' . rand(10000000, 99999999),
                 'email' => strtolower(str_replace(' ', '.', $dw['nama'])) . '@warga.id',
                 'blok_kavling' => $dw['blok'],
+                'tahun_pembelian' => $tanggalAkad->year,
+                'jenis_pembayaran' => 'inhouse',
                 'tipe_rumah' => $dw['tipe'],
                 'luas_tanah' => (int) explode('/', $dw['tipe'])[1],
                 'luas_bangunan' => (int) explode('/', $dw['tipe'])[0],
                 'harga_rumah' => $dw['harga'],
                 'uang_muka' => $uangMuka,
-                'sisa_angsuran' => $dw['lunas'] ? 0 : ($sisaAngsuran * 0.65),
+                'nominal_angsuran' => $nominalAngsuran,
+                'sisa_angsuran' => $dw['lunas'] ? 0 : ($nominalAngsuran * $sisaTempo),
                 'tenor_bulan' => $tenor,
+                'sisa_tempo' => $dw['lunas'] ? 0 : $sisaTempo,
                 'tanggal_akad' => $tanggalAkad,
                 'status' => $dw['lunas'] ? 'lunas' : 'aktif',
             ]);
@@ -111,8 +118,7 @@ class DatabaseSeeder extends Seeder
             ]);
 
             // Buat Cicilan Bulanan
-            $angsuranPerBulan = $sisaAngsuran / $tenor;
-            $paidCount = $dw['lunas'] ? 24 : rand(3, 14);
+            $angsuranPerBulan = $nominalAngsuran;
 
             for ($i = 1; $i <= min($tenor, 24); $i++) {
                 $jatuhTempo = $tanggalAkad->copy()->addMonths($i);
@@ -145,6 +151,14 @@ class DatabaseSeeder extends Seeder
                     ]);
                 }
             }
+
+            $jumlahTunggakan = $penghuni->angsuran()->where('status', 'terlambat')->count();
+            $sisaJadwal = $penghuni->angsuran()->where('status', '!=', 'lunas')->count();
+            $penghuni->update([
+                'tunggakan' => $jumlahTunggakan > 0 ? $jumlahTunggakan : null,
+                'sisa_tempo' => $sisaJadwal,
+                'sisa_angsuran' => $nominalAngsuran * $sisaJadwal,
+            ]);
 
             // Legalitas Sertifikat Rumah untuk masing-masing warga
             $stage = $legalitasStages[$idx % count($legalitasStages)];

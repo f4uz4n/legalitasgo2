@@ -14,9 +14,11 @@ use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = auth()->user();
+        $tahunDipilih = $this->tahunDariRequest($request);
+
         if ($user && $user->isWarga()) {
             $penghuni = $user->penghuni()
                 ->with([
@@ -29,7 +31,17 @@ class DashboardController extends Controller
                 ])
                 ->first();
 
-            return view('warga.dashboard', compact('penghuni'));
+            $daftarTahun = $this->daftarTahunWarga($penghuni);
+            $angsuranTampil = $this->angsuranPadaTahun($penghuni, $tahunDipilih);
+            $penerimaanAngsuran = $this->penerimaanAngsuranWarga($penghuni, $tahunDipilih);
+
+            return view('warga.dashboard', compact(
+                'penghuni',
+                'tahunDipilih',
+                'daftarTahun',
+                'angsuranTampil',
+                'penerimaanAngsuran'
+            ));
         }
 
         // 1. Single Perumahan Info
@@ -49,9 +61,11 @@ class DashboardController extends Controller
         $totalNilaiRumah = Penghuni::sum('harga_rumah');
         $totalUangMuka = Penghuni::sum('uang_muka');
         $totalAngsuranTerbayar = Angsuran::where('status', 'lunas')->sum('jumlah_bayar');
-        $totalTerkumpul = $totalUangMuka + $totalAngsuranTerbayar;
-        $persenTerkumpul = $totalNilaiRumah > 0 ? round(($totalTerkumpul / $totalNilaiRumah) * 100, 1) : 0;
         $totalSisaPiutang = Penghuni::sum('sisa_angsuran');
+        $totalPenerimaan = $this->penerimaanAngsuran($tahunDipilih);
+        $totalTerkumpul = $totalPenerimaan;
+        $persenTerkumpul = 0;
+        $daftarTahun = $this->daftarTahunAdmin();
 
         // 4. Kas In/Out & Pengeluaran
         $totalKasMasuk = KasMasuk::sum('jumlah');
@@ -65,26 +79,7 @@ class DashboardController extends Controller
             ->orderBy('total', 'desc')
             ->get();
 
-        // Monthly cash flow (last 6 months)
-        $monthlyData = [];
-        for ($i = 5; $i >= 0; $i--) {
-            $date = Carbon::now()->subMonths($i);
-            $monthLabel = $date->translatedFormat('M Y');
-
-            $masuk = KasMasuk::whereYear('tanggal', $date->year)
-                ->whereMonth('tanggal', $date->month)
-                ->sum('jumlah');
-
-            $keluar = KasKeluar::whereYear('tanggal', $date->year)
-                ->whereMonth('tanggal', $date->month)
-                ->sum('jumlah');
-
-            $monthlyData[] = [
-                'bulan' => $monthLabel,
-                'masuk' => (float) $masuk,
-                'keluar' => (float) $keluar,
-            ];
-        }
+        $monthlyData = $this->arusKasBulanan($tahunDipilih);
 
         // Angsuran cicilan jatuh tempo bulan ini
         $angsuranJatuhTempo = Angsuran::with('penghuni')
@@ -137,6 +132,7 @@ class DashboardController extends Controller
             'totalUangMuka',
             'totalAngsuranTerbayar',
             'totalTerkumpul',
+            'totalPenerimaan',
             'persenTerkumpul',
             'totalSisaPiutang',
             'totalKasMasuk',
@@ -149,7 +145,131 @@ class DashboardController extends Controller
             'legalitasStats',
             'recentKasMasuk',
             'recentKasKeluar',
-            'recentActivityLogs'
+            'recentActivityLogs',
+            'tahunDipilih',
+            'daftarTahun'
         ));
+    }
+
+    private function tahunDariRequest(Request $request): ?int
+    {
+        $nilai = $request->query('tahun');
+        if ($nilai === 'semua') {
+            return null;
+        }
+        if ($nilai === null || $nilai === '' || !ctype_digit((string) $nilai)) {
+            return (int) now()->year;
+        }
+
+        $tahun = (int) $nilai;
+        if ($tahun < 1990 || $tahun > (int) now()->year + 40) {
+            return (int) now()->year;
+        }
+
+        return $tahun;
+    }
+
+    private function daftarTahunAdmin()
+    {
+        $dariKasMasuk = KasMasuk::query()->whereNotNull('tanggal')->selectRaw('YEAR(tanggal) as tahun')->distinct()->pluck('tahun');
+        $dariKasKeluar = KasKeluar::query()->whereNotNull('tanggal')->selectRaw('YEAR(tanggal) as tahun')->distinct()->pluck('tahun');
+        $dariBayar = Angsuran::query()->whereNotNull('tanggal_bayar')->selectRaw('YEAR(tanggal_bayar) as tahun')->distinct()->pluck('tahun');
+
+        return collect([$dariKasMasuk, $dariKasKeluar, $dariBayar, [(int) now()->year]])
+            ->flatten()
+            ->map(fn ($tahun) => (int) $tahun)
+            ->filter(fn ($tahun) => $tahun >= 1990)
+            ->unique()
+            ->sortDesc()
+            ->values();
+    }
+
+    private function daftarTahunWarga(?Penghuni $penghuni)
+    {
+        $tahun = collect([(int) now()->year]);
+        if ($penghuni) {
+            if ($penghuni->tahun_pembelian) {
+                $tahun->push((int) $penghuni->tahun_pembelian);
+            }
+            foreach ($penghuni->angsuran as $angsuran) {
+                if ($angsuran->tanggal_jatuh_tempo) {
+                    $tahun->push((int) $angsuran->tanggal_jatuh_tempo->year);
+                }
+                if ($angsuran->tanggal_bayar) {
+                    $tahun->push((int) $angsuran->tanggal_bayar->year);
+                }
+            }
+        }
+
+        return $tahun->filter(fn ($nilai) => $nilai >= 1990)->unique()->sortDesc()->values();
+    }
+
+    private function angsuranPadaTahun(?Penghuni $penghuni, ?int $tahun)
+    {
+        if (!$penghuni) {
+            return collect();
+        }
+        if ($tahun === null) {
+            return $penghuni->angsuran;
+        }
+
+        return $penghuni->angsuran->filter(function ($angsuran) use ($tahun) {
+            $jatuhTempo = $angsuran->tanggal_jatuh_tempo ? (int) $angsuran->tanggal_jatuh_tempo->year : null;
+            $tanggalBayar = $angsuran->tanggal_bayar ? (int) $angsuran->tanggal_bayar->year : null;
+
+            return $jatuhTempo === $tahun || $tanggalBayar === $tahun;
+        })->values();
+    }
+
+    private function penerimaanAngsuranWarga(?Penghuni $penghuni, ?int $tahun): float
+    {
+        if (!$penghuni) {
+            return 0;
+        }
+
+        return (float) $penghuni->angsuran
+            ->filter(function ($angsuran) use ($tahun) {
+                if ((float) $angsuran->jumlah_bayar <= 0 || !$angsuran->tanggal_bayar) {
+                    return false;
+                }
+
+                return $tahun === null || (int) $angsuran->tanggal_bayar->year === $tahun;
+            })
+            ->sum('jumlah_bayar');
+    }
+
+    private function penerimaanAngsuran(?int $tahun): float
+    {
+        $query = Angsuran::query()->where('jumlah_bayar', '>', 0)->whereNotNull('tanggal_bayar');
+        if ($tahun !== null) {
+            $query->whereYear('tanggal_bayar', $tahun);
+        }
+
+        return (float) $query->sum('jumlah_bayar');
+    }
+
+    private function arusKasBulanan(?int $tahun): array
+    {
+        $bulan = [];
+        if ($tahun === null) {
+            for ($i = 11; $i >= 0; $i--) {
+                $bulan[] = Carbon::now()->startOfMonth()->subMonths($i);
+            }
+        } else {
+            for ($i = 1; $i <= 12; $i++) {
+                $bulan[] = Carbon::create($tahun, $i, 1)->startOfMonth();
+            }
+        }
+
+        $data = [];
+        foreach ($bulan as $date) {
+            $data[] = [
+                'bulan' => $date->translatedFormat($tahun === null ? 'M Y' : 'M'),
+                'masuk' => (float) KasMasuk::whereYear('tanggal', $date->year)->whereMonth('tanggal', $date->month)->sum('jumlah'),
+                'keluar' => (float) KasKeluar::whereYear('tanggal', $date->year)->whereMonth('tanggal', $date->month)->sum('jumlah'),
+            ];
+        }
+
+        return $data;
     }
 }

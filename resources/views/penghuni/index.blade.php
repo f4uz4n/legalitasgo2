@@ -1,31 +1,52 @@
 @extends('layouts.admin')
-@section('title', 'Data Penghuni')
+@section('title', 'Rekap Pengangsur')
 @section('breadcrumb')
-<li class="breadcrumb-item active">Penghuni</li>
+<li class="breadcrumb-item active">Rekap Pengangsur</li>
 @endsection
 
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h4 class="fw-bold mb-0"><i class="bi bi-people-fill me-2"></i>Data Penghuni</h4>
-    <a href="{{ route('penghuni.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Tambah Penghuni</a>
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h4 class="fw-bold mb-1">Rekap Pembayaran Pembelian Unit</h4>
+        <div class="text-muted small">{{ $sharedPerumahan->nama_perumahan ?? 'Perumahan' }} · {{ number_format($totalPengangsur) }} pengangsur</div>
+    </div>
+    <a href="{{ route('penghuni.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Tambah Pengangsur</a>
 </div>
 
-<!-- Filter -->
 <div class="content-card mb-4">
     <div class="card-body py-3">
         <form action="{{ route('penghuni.index') }}" method="GET" class="row g-3 align-items-end">
-            <div class="col-md-5">
-                <input type="text" name="search" class="form-control" placeholder="Cari nama warga, blok kavling, atau NIK..." value="{{ request('search') }}">
+            <div class="col-lg-4">
+                <label class="form-label small mb-1">Cari</label>
+                <input type="text" name="search" class="form-control" placeholder="Nama, blok, atau NIK" value="{{ request('search') }}">
             </div>
-            <div class="col-md-3">
+            <div class="col-lg-2">
+                <label class="form-label small mb-1">Pembayaran</label>
+                <select name="jenis_pembayaran" class="form-select">
+                    <option value="">Semua</option>
+                    <option value="inhouse" {{ request('jenis_pembayaran') == 'inhouse' ? 'selected' : '' }}>INHOUSE</option>
+                    <option value="cash_lunak" {{ request('jenis_pembayaran') == 'cash_lunak' ? 'selected' : '' }}>CASH LUNAK</option>
+                </select>
+            </div>
+            <div class="col-lg-2">
+                <label class="form-label small mb-1">Tahun</label>
+                <select name="tahun_pembelian" class="form-select">
+                    <option value="">Semua</option>
+                    @foreach($tahunList as $tahun)
+                        <option value="{{ $tahun }}" {{ (string) request('tahun_pembelian') === (string) $tahun ? 'selected' : '' }}>{{ $tahun }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-lg-2">
+                <label class="form-label small mb-1">Status</label>
                 <select name="status" class="form-select">
-                    <option value="">Semua Status Cicilan</option>
-                    <option value="aktif" {{ request('status') == 'aktif' ? 'selected' : '' }}>Aktif Cicilan</option>
+                    <option value="">Semua</option>
+                    <option value="aktif" {{ request('status') == 'aktif' ? 'selected' : '' }}>Aktif</option>
                     <option value="lunas" {{ request('status') == 'lunas' ? 'selected' : '' }}>Lunas</option>
                     <option value="bermasalah" {{ request('status') == 'bermasalah' ? 'selected' : '' }}>Bermasalah</option>
                 </select>
             </div>
-            <div class="col-md-4">
+            <div class="col-lg-2">
                 <button class="btn btn-primary me-2"><i class="bi bi-search me-1"></i> Filter</button>
                 <a href="{{ route('penghuni.index') }}" class="btn btn-light">Reset</a>
             </div>
@@ -36,73 +57,44 @@
 <div class="content-card">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-modern">
+            <table class="table table-rekap table-hover mb-0">
                 <thead>
                     <tr>
-                        <th>Blok Kavling</th>
-                        <th>Nama Warga</th>
-                        <th>Kontak</th>
-                        <th>Tipe</th>
-                        <th>Harga Rumah</th>
-                        <th>Sisa Cicilan</th>
-                        <th>Progress Angsuran</th>
-                        <th>Status</th>
-                        <th>Aksi</th>
+                        <th>NO</th>
+                        <th>NAMA</th>
+                        <th>BLOK</th>
+                        <th>TAHUN PEMBELIAN</th>
+                        <th>PEMBAYARAN</th>
+                        <th>HARGA</th>
+                        <th>UANG MUKA</th>
+                        <th>ANGSURAN</th>
+                        <th>TEMPO</th>
+                        <th>SISA TEMPO</th>
+                        <th>TUNGGAKAN</th>
+                        <th>SISA PEMBAYARAN</th>
+                        <th>AKSI</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($penghuni as $idx => $p)
                     <tr>
-                        <td>
-                            <span class="badge bg-primary text-white fw-bold fs-6 px-2 py-1">{{ $p->blok_kavling }}</span>
-                        </td>
-                        <td>
-                            <div class="fw-bold text-dark">{{ $p->nama_lengkap }}</div>
-                            <small class="text-muted">NIK: {{ $p->nik ?? '-' }}</small>
-                        </td>
-                        <td>
-                            <div class="small"><i class="bi bi-telephone me-1 text-primary"></i>{{ $p->no_hp ?? '-' }}</div>
-                            @if($p->user)
-                                @if($p->user->is_active ?? true)
-                                    <div class="text-success mt-1 d-flex align-items-center gap-1" style="font-size: 0.73rem;" title="Akun login aktif">
-                                        <i class="bi bi-shield-check"></i> {{ $p->user->email }}
-                                    </div>
-                                @else
-                                    <div class="text-danger mt-1 d-flex align-items-center gap-1" style="font-size: 0.73rem;" title="Akun login dinonaktifkan">
-                                        <i class="bi bi-pause-circle-fill"></i> {{ $p->user->email }} <span class="badge bg-danger-subtle text-danger py-0 px-1">Nonaktif</span>
-                                    </div>
-                                @endif
-                            @else
-                                <div class="text-muted" style="font-size: 0.73rem;">{{ $p->email ?? 'Belum ada akun' }}</div>
-                            @endif
-                        </td>
-                        <td><span class="badge bg-light text-dark border">{{ $p->tipe_rumah ?? '-' }}</span></td>
-                        <td class="fw-semibold">Rp {{ number_format($p->harga_rumah, 0, ',', '.') }}</td>
-                        <td class="text-danger fw-semibold">
-                            {{ $p->sisa_angsuran > 0 ? 'Rp ' . number_format($p->sisa_angsuran, 0, ',', '.') : '-' }}
-                        </td>
-                        <td style="min-width:130px">
-                            <div class="d-flex align-items-center gap-2">
-                                <div class="progress flex-grow-1" style="height:7px">
-                                    <div class="progress-bar bg-{{ $p->progress_bayar >= 100 ? 'success' : ($p->progress_bayar > 50 ? 'primary' : 'warning') }}" style="width:{{ $p->progress_bayar }}%"></div>
-                                </div>
-                                <small class="text-dark fw-bold">{{ $p->progress_bayar }}%</small>
-                            </div>
-                        </td>
-                        <td>
-                            @if($p->status === 'lunas')
-                                <span class="badge badge-status bg-success bg-opacity-10 text-success border border-success border-opacity-25"><i class="bi bi-check-circle me-1"></i> Lunas</span>
-                            @elseif($p->status === 'aktif')
-                                <span class="badge badge-status bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25"><i class="bi bi-hourglass-split me-1"></i> Aktif</span>
-                            @else
-                                <span class="badge badge-status bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">Bermasalah</span>
-                            @endif
-                        </td>
+                        <td class="text-center">{{ $penghuni->firstItem() + $idx }}</td>
+                        <td class="fw-semibold">{{ $p->nama_lengkap }}</td>
+                        <td class="text-center fw-bold">{{ $p->blok_kavling }}</td>
+                        <td class="text-center">{{ $p->tahun_pembelian ?? '-' }}</td>
+                        <td class="text-center">{{ $p->jenis_pembayaran_label }}</td>
+                        <td class="text-end">Rp {{ number_format($p->harga_rumah, 0, ',', '.') }}</td>
+                        <td class="text-end">Rp {{ number_format($p->uang_muka, 0, ',', '.') }}</td>
+                        <td class="text-end">Rp {{ number_format($p->angsuran_bulanan, 0, ',', '.') }}</td>
+                        <td class="text-center">{{ $p->tempo_label }}</td>
+                        <td class="text-center">{{ $p->sisa_tempo_label }}</td>
+                        <td class="text-center {{ (int) $p->tunggakan > 0 ? 'text-danger fw-bold' : '' }}">{{ $p->tunggakan_label }}</td>
+                        <td class="text-end fw-semibold">Rp {{ number_format($p->sisa_angsuran, 0, ',', '.') }}</td>
                         <td>
                             <div class="d-flex align-items-center gap-1">
                                 <a href="{{ route('penghuni.show', $p) }}" class="btn btn-sm btn-outline-primary" title="Detail"><i class="bi bi-eye"></i></a>
                                 <a href="{{ route('penghuni.edit', $p) }}" class="btn btn-sm btn-outline-secondary" title="Edit"><i class="bi bi-pencil"></i></a>
-                                <form action="{{ route('penghuni.destroy', $p) }}" method="POST" onsubmit="return confirm('Hapus data warga ini?')" class="d-inline">
+                                <form action="{{ route('penghuni.destroy', $p) }}" method="POST" onsubmit="return confirm('Hapus data pengangsur ini?')" class="d-inline">
                                     @csrf @method('DELETE')
                                     <button class="btn btn-sm btn-outline-danger" title="Hapus"><i class="bi bi-trash"></i></button>
                                 </form>
@@ -110,14 +102,45 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="9" class="text-center text-muted py-4">Belum ada data warga</td></tr>
+                    <tr><td colspan="13" class="text-center text-muted py-4">Belum ada data pengangsur</td></tr>
                     @endforelse
                 </tbody>
+                @if($totalPengangsur > 0)
+                <tfoot>
+                    <tr>
+                        <td colspan="11" class="text-center">JUMLAH</td>
+                        <td class="text-end">Rp {{ number_format($totalSisaPembayaran, 0, ',', '.') }}</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+                @endif
             </table>
         </div>
     </div>
-    <div class="card-footer bg-white border-0 py-3 px-4">
+    <div class="card-footer bg-white border-0 py-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span class="text-muted small">Jumlah sisa pembayaran menghitung seluruh hasil filter, termasuk halaman lain.</span>
         {{ $penghuni->onEachSide(1)->links() }}
     </div>
 </div>
+
+<style>
+    .table-rekap { font-size: 0.78rem; }
+    .table-rekap thead th {
+        background: #ffe08a;
+        color: #292524;
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+        border-color: #f3d98a;
+        text-align: center;
+        vertical-align: middle;
+    }
+    .table-rekap td { white-space: nowrap; vertical-align: middle; }
+    .table-rekap tfoot td {
+        background: #b7e1cd;
+        font-weight: 800;
+        border-top: 2px solid #86c5a8;
+    }
+</style>
 @endsection

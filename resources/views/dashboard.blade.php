@@ -19,7 +19,16 @@
                 Warga Terdaftar: <strong>{{ $totalPenghuni }} Warga</strong>
             </p>
         </div>
-        <div class="d-flex flex-wrap gap-2">
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <form method="GET" action="{{ route('dashboard') }}" class="d-flex align-items-center gap-2">
+                <label for="tahun" class="small text-muted mb-0">Tahun</label>
+                <select id="tahun" name="tahun" class="form-select form-select-sm" style="width: 8.5rem;" onchange="this.form.submit()">
+                    <option value="semua" @selected($tahunDipilih === null)>Semua tahun</option>
+                    @foreach($daftarTahun as $tahun)
+                        <option value="{{ $tahun }}" @selected($tahunDipilih === (int) $tahun)>{{ $tahun }}</option>
+                    @endforeach
+                </select>
+            </form>
             <a href="{{ route('pembayaran.create') }}" class="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-sm">
                 <i class="bi bi-plus-lg"></i> Catat Cicilan Warga
             </a>
@@ -42,20 +51,20 @@
     <div class="col-xl-3 col-md-6">
         <div class="stat-card-white h-100">
             <div class="d-flex justify-content-between align-items-start mb-2">
-                <div class="stat-sublabel text-primary">Penerimaan Cicilan & DP</div>
+                <div class="stat-sublabel text-primary">Total Penerimaan</div>
                 <div class="stat-icon-wrapper icon-blue">
                     <i class="bi bi-cash-coin"></i>
                 </div>
             </div>
             <div class="stat-number text-primary">
-                Rp {{ number_format($totalKasMasuk, 0, ',', '.') }}
+                Rp {{ number_format($totalPenerimaan, 0, ',', '.') }}
             </div>
             <div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center small">
-                <span class="text-muted">Progres Collecting:</span>
-                <span class="fw-bold text-dark">{{ $persenTerkumpul }}%</span>
+                <span class="text-muted">Periode:</span>
+                <span class="fw-bold text-dark">{{ $tahunDipilih ? $tahunDipilih : 'Semua tahun' }}</span>
             </div>
-            <div class="progress mt-1" style="height: 6px;">
-                <div class="progress-bar bg-primary" role="progressbar" style="width: {{ min($persenTerkumpul, 100) }}%"></div>
+            <div class="text-secondary small mt-1">
+                <i class="bi bi-info-circle text-muted me-1"></i> Angsuran yang sudah dicatat, tidak termasuk DP
             </div>
         </div>
     </div>
@@ -137,7 +146,7 @@
             <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
                 <div>
                     <h6 class="fw-bold mb-0 text-dark">Arus Kas Bulanan (Penerimaan Cicilan vs Pengeluaran)</h6>
-                    <small class="text-muted">Tracking 6 bulan terakhir</small>
+                    <small class="text-muted">{{ $tahunDipilih ? 'Januari–Desember ' . $tahunDipilih : '12 bulan terakhir' }}</small>
                 </div>
                 <span class="badge bg-light text-primary border px-3 py-2">
                     <i class="bi bi-graph-up-arrow me-1"></i> Realtime Cash Flow
@@ -375,12 +384,53 @@
 
 @push('scripts')
 <script>
+    function labelSumbuRupiah(nilai) {
+        const angka = Number(nilai) || 0;
+        const tanda = angka < 0 ? '-' : '';
+        const abs = Math.abs(angka);
+        if (abs >= 1000000000) {
+            return tanda + 'Rp ' + rapikanAngka(abs / 1000000000) + ' M';
+        }
+        if (abs >= 1000000) {
+            return tanda + 'Rp ' + rapikanAngka(abs / 1000000) + ' Jt';
+        }
+        if (abs >= 1000) {
+            return tanda + 'Rp ' + rapikanAngka(abs / 1000) + ' Rb';
+        }
+        return tanda + 'Rp ' + Math.round(abs).toLocaleString('id-ID');
+    }
+
+    function rapikanAngka(nilai) {
+        const bulat = Math.round(nilai * 10) / 10;
+        return bulat.toLocaleString('id-ID', { maximumFractionDigits: Number.isInteger(bulat) ? 0 : 1 });
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         // Cash Flow Bar/Line Chart
         const monthlyData = @json($monthlyData);
         const labels = monthlyData.map(item => item.bulan);
         const masukData = monthlyData.map(item => item.masuk);
         const keluarData = monthlyData.map(item => item.keluar);
+
+        const puncakKas = Math.max(0, ...masukData, ...keluarData);
+        const sumbuY = {
+            beginAtZero: true,
+            grace: '8%',
+            grid: { color: '#f1f5f9' },
+            ticks: {
+                maxTicksLimit: 5,
+                padding: 8,
+                color: '#64748b',
+                font: { family: 'Plus Jakarta Sans', size: 11 },
+                callback: function (val) {
+                    return labelSumbuRupiah(val);
+                }
+            }
+        };
+        if (puncakKas <= 0) {
+            sumbuY.suggestedMax = 1000000;
+            sumbuY.ticks.stepSize = 250000;
+        }
 
         const ctxCash = document.getElementById('cashflowChart').getContext('2d');
         new Chart(ctxCash, {
@@ -424,18 +474,18 @@
                         }
                     }
                 },
+                layout: { padding: { left: 4, right: 8 } },
                 scales: {
                     x: {
-                        grid: { display: false }
-                    },
-                    y: {
-                        grid: { color: '#f1f5f9' },
+                        grid: { display: false },
                         ticks: {
-                            callback: function(val) {
-                                return 'Rp ' + (val / 1000000) + ' Jt';
-                            }
+                            color: '#64748b',
+                            font: { family: 'Plus Jakarta Sans', size: 11 },
+                            maxRotation: 0,
+                            autoSkip: true
                         }
-                    }
+                    },
+                    y: sumbuY
                 }
             }
         });

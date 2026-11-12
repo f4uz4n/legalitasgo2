@@ -64,10 +64,17 @@ class PembayaranController extends Controller
             }
         }
 
+        $piutang = Penghuni::query();
+        if ($user && $user->isWarga()) {
+            $piutang->where('id', $user->penghuni?->id ?? 0);
+        }
+        $totalSisa = (float) $piutang->sum('sisa_angsuran');
+        $totalTerbayar = (float) (clone $baseStats)->sum('jumlah_bayar');
+
         $stats = [
-            'total_tagihan' => (clone $baseStats)->sum('jumlah_angsuran'),
-            'total_terbayar' => (clone $baseStats)->sum('jumlah_bayar'),
-            'total_sisa' => max(0, (clone $baseStats)->sum('jumlah_angsuran') - (clone $baseStats)->sum('jumlah_bayar')),
+            'total_tagihan' => $totalSisa + $totalTerbayar,
+            'total_terbayar' => $totalTerbayar,
+            'total_sisa' => $totalSisa,
             'count_total' => (clone $baseStats)->count(),
             'count_lunas' => (clone $baseStats)->where('status', 'lunas')->count(),
             'count_belum_bayar' => (clone $baseStats)->where('status', 'belum_bayar')->count(),
@@ -170,6 +177,8 @@ class PembayaranController extends Controller
         }
 
         $angsuran = Angsuran::with('penghuni')->findOrFail($validated['angsuran_id']);
+        $statusAwal = $angsuran->status;
+        $jatuhTempoLewat = $angsuran->tanggal_jatuh_tempo && $angsuran->tanggal_jatuh_tempo->isPast();
 
         // Update angsuran
         $totalBayar = $angsuran->jumlah_bayar + $validated['jumlah_bayar'];
@@ -215,12 +224,22 @@ class PembayaranController extends Controller
             'created_by' => auth()->id(),
         ]);
 
-        // Update sisa angsuran penghuni
+        // Update sisa pembayaran, sisa tempo, dan tunggakan pada rekap
         $penghuni = $angsuran->penghuni;
         $penghuni->sisa_angsuran = $penghuni->sisa_angsuran - $validated['jumlah_bayar'];
         if ($penghuni->sisa_angsuran <= 0) {
             $penghuni->sisa_angsuran = 0;
+            $penghuni->sisa_tempo = 0;
+            $penghuni->tunggakan = null;
             $penghuni->status = 'lunas';
+        } elseif ($status === 'lunas' && $statusAwal !== 'lunas') {
+            if ((int) $penghuni->sisa_tempo > 0) {
+                $penghuni->sisa_tempo = (int) $penghuni->sisa_tempo - 1;
+            }
+            if (($statusAwal === 'terlambat' || $jatuhTempoLewat) && (int) $penghuni->tunggakan > 0) {
+                $sisaTunggakan = (int) $penghuni->tunggakan - 1;
+                $penghuni->tunggakan = $sisaTunggakan > 0 ? $sisaTunggakan : null;
+            }
         }
         $penghuni->save();
 

@@ -180,12 +180,29 @@ class SystemController extends Controller
             if (in_array('angsuran', $request->target_reset) || in_array('kas_masuk', $request->target_reset)) {
                 Penghuni::all()->each(function ($p) {
                     $totalBayar = Angsuran::where('penghuni_id', $p->id)->where('status', 'lunas')->sum('jumlah_bayar');
-                    $p->sisa_angsuran = max(0, $p->harga_rumah - $p->uang_muka - $totalBayar);
-                    if ($p->sisa_angsuran <= 0) {
-                        $p->status = 'lunas';
+                    $totalJadwal = Angsuran::where('penghuni_id', $p->id)->count();
+                    $sisaTempo = Angsuran::where('penghuni_id', $p->id)->where('status', '!=', 'lunas')->count();
+                    $tunggakan = Angsuran::where('penghuni_id', $p->id)->where(function ($q) {
+                        $q->where('status', 'terlambat')
+                            ->orWhere(function ($q2) {
+                                $q2->whereIn('status', ['belum_bayar', 'sebagian'])
+                                    ->whereDate('tanggal_jatuh_tempo', '<', now()->toDateString());
+                            });
+                    })->count();
+
+                    if ($totalJadwal > 0) {
+                        $p->sisa_tempo = $sisaTempo;
+                        $p->tunggakan = $tunggakan > 0 ? $tunggakan : null;
+                        $p->sisa_angsuran = (float) $p->nominal_angsuran > 0
+                            ? round($sisaTempo * (float) $p->nominal_angsuran, 2)
+                            : max(0, $p->harga_rumah - $p->uang_muka - $totalBayar);
                     } else {
-                        $p->status = 'aktif';
+                        $p->sisa_angsuran = max(0, $p->harga_rumah - $p->uang_muka);
+                        $p->sisa_tempo = (int) $p->tenor_bulan;
+                        $p->tunggakan = null;
                     }
+
+                    $p->status = $p->sisa_angsuran <= 0 ? 'lunas' : 'aktif';
                     $p->save();
                 });
             }

@@ -226,6 +226,10 @@
             font-size: 10pt;
         }
         tfoot td.text-right { text-align: right; }
+        table.tabel-rekap { font-size: 7.5pt; }
+        table.tabel-rekap thead th { font-size: 6.5pt; padding: 4px 3px; background: #ffe08a; color: #292524; }
+        table.tabel-rekap td { padding: 3px; }
+        table.tabel-rekap tfoot td { background: #b7e1cd; font-size: 8pt; }
 
         .badge-status {
             display: inline-block;
@@ -580,42 +584,45 @@
             </div>
         </div>
 
-        <table>
+        <table class="tabel-rekap">
             <thead>
                 <tr>
-                    <th style="width: 35px;">#</th>
-                    <th>Nama Penghuni</th>
-                    <th class="text-center" style="width: 60px;">Kavling</th>
-                    <th class="text-right">Harga Unit (Rp)</th>
-                    <th class="text-right">Uang Muka (Rp)</th>
-                    <th class="text-right">Sisa (Rp)</th>
-                    <th class="text-center" style="width: 70px;">Status</th>
+                    <th style="width: 22px;">NO</th>
+                    <th>NAMA</th>
+                    <th>BLOK</th>
+                    <th>THN</th>
+                    <th>BAYAR</th>
+                    <th class="text-right">HARGA</th>
+                    <th class="text-right">UANG MUKA</th>
+                    <th class="text-right">ANGSURAN</th>
+                    <th>TEMPO</th>
+                    <th>SISA</th>
+                    <th>TGK</th>
+                    <th class="text-right">SISA BAYAR</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach($daftarPenghuni as $i => $p)
                 <tr>
-                    <td>{{ $i + 1 }}</td>
+                    <td class="text-center">{{ $i + 1 }}</td>
                     <td><strong>{{ $p->nama_lengkap }}</strong></td>
                     <td class="text-center">{{ $p->blok_kavling ?? '-' }}</td>
+                    <td class="text-center">{{ $p->tahun_pembelian ?? '-' }}</td>
+                    <td class="text-center">{{ $p->jenis_pembayaran_label }}</td>
                     <td class="text-right">{{ number_format($p->harga_rumah, 0, ',', '.') }}</td>
                     <td class="text-right">{{ number_format($p->uang_muka, 0, ',', '.') }}</td>
+                    <td class="text-right">{{ number_format($p->angsuran_bulanan, 0, ',', '.') }}</td>
+                    <td class="text-center">{{ $p->tempo_label }}</td>
+                    <td class="text-center">{{ $p->sisa_tempo_label }}</td>
+                    <td class="text-center">{{ $p->tunggakan_label }}</td>
                     <td class="text-right">{{ number_format($p->sisa_angsuran ?? 0, 0, ',', '.') }}</td>
-                    <td class="text-center">
-                        <span class="badge-status {{ $p->status === 'lunas' ? 'badge-lunas' : ($p->status === 'aktif' ? 'badge-aktif' : 'badge-default') }}">
-                            {{ strtoupper($p->status) }}
-                        </span>
-                    </td>
                 </tr>
                 @endforeach
             </tbody>
             <tfoot>
                 <tr>
-                    <td colspan="3">TOTAL</td>
-                    <td class="text-right">Rp {{ number_format($totalNilaiRumah, 0, ',', '.') }}</td>
-                    <td class="text-right">Rp {{ number_format($totalUangMuka, 0, ',', '.') }}</td>
-                    <td class="text-right">—</td>
-                    <td></td>
+                    <td colspan="11">JUMLAH</td>
+                    <td class="text-right">Rp {{ number_format($daftarPenghuni->sum('sisa_angsuran'), 0, ',', '.') }}</td>
                 </tr>
             </tfoot>
         </table>

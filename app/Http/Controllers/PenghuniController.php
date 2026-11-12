@@ -4,12 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Penghuni;
 use App\Models\Perumahan;
-use App\Models\Angsuran;
 use App\Models\User;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule;
 
 class PenghuniController extends Controller
 {
@@ -29,14 +26,36 @@ class PenghuniController extends Controller
             $query->where('status', $request->status);
         }
 
+        if ($request->filled('jenis_pembayaran')) {
+            $query->where('jenis_pembayaran', $request->jenis_pembayaran);
+        }
+
+        if ($request->filled('tahun_pembelian')) {
+            $query->where('tahun_pembelian', $request->tahun_pembelian);
+        }
+
         if ($request->filled('perumahan_id')) {
             $query->where('perumahan_id', $request->perumahan_id);
         }
 
-        $penghuni = $query->orderBy('nama_lengkap')->paginate(15)->withQueryString();
-        $perumahanList = Perumahan::pluck('nama_perumahan', 'id');
+        $totalPengangsur = (clone $query)->count();
+        $totalSisaPembayaran = (clone $query)->sum('sisa_angsuran');
 
-        return view('penghuni.index', compact('penghuni', 'perumahanList'));
+        $penghuni = $query->orderBy('blok_kavling')->orderBy('nama_lengkap')->paginate(25)->withQueryString();
+        $perumahanList = Perumahan::pluck('nama_perumahan', 'id');
+        $tahunList = Penghuni::query()
+            ->whereNotNull('tahun_pembelian')
+            ->distinct()
+            ->orderByDesc('tahun_pembelian')
+            ->pluck('tahun_pembelian');
+
+        return view('penghuni.index', compact(
+            'penghuni',
+            'perumahanList',
+            'tahunList',
+            'totalPengangsur',
+            'totalSisaPembayaran'
+        ));
     }
 
     public function create()
@@ -55,49 +74,30 @@ class PenghuniController extends Controller
             }
         }
 
-        $validated = $request->validate([
-            'perumahan_id' => 'required|exists:perumahan,id',
-            'nama_lengkap' => 'required|string|max:255',
-            'nik' => 'nullable|string|max:16',
-            'no_hp' => 'nullable|string|max:20',
-            'email' => 'nullable|email|max:255',
-            'blok_kavling' => 'required|string|max:255',
-            'tipe_rumah' => 'nullable|string|max:255',
-            'luas_tanah' => 'nullable|numeric|min:0',
-            'luas_bangunan' => 'nullable|numeric|min:0',
-            'harga_rumah' => 'required|numeric|min:0',
-            'uang_muka' => 'nullable|numeric|min:0',
-            'tenor_bulan' => 'required|integer|min:1',
-            'tanggal_akad' => 'nullable|date',
-            'keterangan' => 'nullable|string',
-            'create_user_account' => 'nullable',
-            'login_email' => 'nullable|email',
-            'login_password' => 'nullable|string|min:6',
-        ]);
+        $validated = $request->validate($this->aturanPengangsur());
+        $data = $this->dataRekap($validated);
 
-        $validated['sisa_angsuran'] = $validated['harga_rumah'] - ($validated['uang_muka'] ?? 0);
-
-        // Buat akun login jika dicentang atau diaktifkan (default aktif)
         $userId = null;
+        $loginEmail = null;
         if ($request->has('create_user_account') && $request->input('create_user_account') != '0') {
-            $loginEmail = $request->filled('login_email') 
-                ? $request->input('login_email') 
+            $loginEmail = $request->filled('login_email')
+                ? $request->input('login_email')
                 : ($request->filled('email') ? $request->input('email') : 'warga.' . strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $request->blok_kavling)) . '@warga.local');
-            
-            $loginPassword = $request->filled('login_password') 
-                ? $request->input('login_password') 
+
+            $loginPassword = $request->filled('login_password')
+                ? $request->input('login_password')
                 : ($request->filled('nik') ? $request->input('nik') : 'warga123');
 
             $existingUser = User::where('email', $loginEmail)->first();
             if ($existingUser) {
                 $existingUser->update([
                     'role' => 'warga',
-                    'name' => $validated['nama_lengkap'],
+                    'name' => $data['nama_lengkap'],
                 ]);
                 $userId = $existingUser->id;
             } else {
                 $newUser = User::create([
-                    'name' => $validated['nama_lengkap'],
+                    'name' => $data['nama_lengkap'],
                     'email' => $loginEmail,
                     'password' => Hash::make($loginPassword),
                     'role' => 'warga',
@@ -106,26 +106,14 @@ class PenghuniController extends Controller
             }
         }
 
-        $validated['user_id'] = $userId;
-        $penghuni = Penghuni::create($validated);
+        $data['user_id'] = $userId;
+        $penghuni = Penghuni::create($data);
+        $jadwalBaru = $penghuni->buatJadwalSisa();
 
-        // Generate jadwal angsuran
-        if ($penghuni->tenor_bulan > 0) {
-            $angsuranPerBulan = $penghuni->sisa_angsuran / $penghuni->tenor_bulan;
-            $startDate = $penghuni->tanggal_akad ? Carbon::parse($penghuni->tanggal_akad)->addMonth() : Carbon::now()->addMonth();
-
-            for ($i = 1; $i <= $penghuni->tenor_bulan; $i++) {
-                Angsuran::create([
-                    'penghuni_id' => $penghuni->id,
-                    'angsuran_ke' => $i,
-                    'jumlah_angsuran' => round($angsuranPerBulan, 2),
-                    'tanggal_jatuh_tempo' => $startDate->copy()->addMonths($i - 1),
-                    'status' => 'belum_bayar',
-                ]);
-            }
+        $pesan = 'Data pengangsur berhasil disimpan.';
+        if ($jadwalBaru && (int) $penghuni->sisa_tempo > 0) {
+            $pesan .= ' Jadwal sisa tempo ' . $penghuni->sisa_tempo . 'X sudah dibuat.';
         }
-
-        $pesan = 'Data penghuni dan jadwal angsuran berhasil dibuat.';
         if ($userId) {
             $pesan .= ' Akun login warga aktif (' . $loginEmail . ').';
         }
@@ -155,35 +143,16 @@ class PenghuniController extends Controller
 
     public function update(Request $request, Penghuni $penghuni)
     {
-        $validated = $request->validate([
-            'perumahan_id' => 'required|exists:perumahan,id',
-            'nama_lengkap' => 'required|string|max:255',
-            'nik' => 'nullable|string|max:16',
-            'no_hp' => 'nullable|string|max:20',
-            'email' => 'nullable|email|max:255',
-            'blok_kavling' => 'required|string|max:255',
-            'tipe_rumah' => 'nullable|string|max:255',
-            'luas_tanah' => 'nullable|numeric|min:0',
-            'luas_bangunan' => 'nullable|numeric|min:0',
-            'harga_rumah' => 'required|numeric|min:0',
-            'uang_muka' => 'nullable|numeric|min:0',
-            'tenor_bulan' => 'required|integer|min:1',
-            'tanggal_akad' => 'nullable|date',
-            'status' => 'required|in:aktif,lunas,bermasalah',
-            'keterangan' => 'nullable|string',
-            'create_user_account' => 'nullable',
-            'login_email' => 'nullable|email',
-            'login_password' => 'nullable|string|min:6',
-        ]);
+        $validated = $request->validate($this->aturanPengangsur(true));
+        $data = $this->dataRekap($validated, $validated['status']);
 
-        // Tangani update atau pembuatan akun login warga
         if ($request->has('create_user_account') && $request->input('create_user_account') != '0') {
-            $loginEmail = $request->filled('login_email') 
-                ? $request->input('login_email') 
+            $loginEmail = $request->filled('login_email')
+                ? $request->input('login_email')
                 : ($request->filled('email') ? $request->input('email') : 'warga.' . strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $request->blok_kavling)) . '@warga.local');
 
             if ($penghuni->user) {
-                $userUpdates = ['name' => $validated['nama_lengkap']];
+                $userUpdates = ['name' => $data['nama_lengkap']];
                 if ($request->filled('login_email')) {
                     $userUpdates['email'] = $request->login_email;
                 }
@@ -198,30 +167,132 @@ class PenghuniController extends Controller
                 if ($existingUser) {
                     $existingUser->update([
                         'role' => 'warga',
-                        'name' => $validated['nama_lengkap'],
+                        'name' => $data['nama_lengkap'],
                         'is_active' => $request->boolean('login_is_active'),
                     ]);
-                    $validated['user_id'] = $existingUser->id;
+                    $data['user_id'] = $existingUser->id;
                 } else {
                     $newUser = User::create([
-                        'name' => $validated['nama_lengkap'],
+                        'name' => $data['nama_lengkap'],
                         'email' => $loginEmail,
                         'password' => Hash::make($loginPassword),
                         'role' => 'warga',
                         'is_active' => $request->boolean('login_is_active'),
                     ]);
-                    $validated['user_id'] = $newUser->id;
+                    $data['user_id'] = $newUser->id;
                 }
             }
         }
 
-        $penghuni->update($validated);
-        return redirect()->route('penghuni.show', $penghuni)->with('success', 'Data penghuni dan akun login berhasil diperbarui.');
+        $penghuni->update($data);
+        $penghuni->refresh();
+        $jadwalBaru = $penghuni->buatJadwalSisa();
+
+        $pesan = 'Data pengangsur berhasil diperbarui.';
+        if ($jadwalBaru) {
+            $pesan .= (int) $penghuni->sisa_tempo > 0
+                ? ' Jadwal sisa tempo disesuaikan.'
+                : ' Jadwal angsuran dikosongkan karena sisa tempo 0.';
+        } else {
+            $pesan .= ' Jadwal yang sudah ada pembayaran tidak diubah.';
+        }
+
+        return redirect()->route('penghuni.show', $penghuni)->with('success', $pesan);
     }
 
     public function destroy(Penghuni $penghuni)
     {
         $penghuni->delete();
-        return redirect()->route('penghuni.index')->with('success', 'Data penghuni berhasil dihapus.');
+        return redirect()->route('penghuni.index')->with('success', 'Data pengangsur berhasil dihapus.');
+    }
+
+    private function aturanPengangsur(bool $wajibStatus = false): array
+    {
+        $rules = [
+            'perumahan_id' => 'required|exists:perumahan,id',
+            'nama_lengkap' => 'required|string|max:255',
+            'nik' => 'nullable|string|max:16',
+            'no_hp' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:255',
+            'blok_kavling' => 'required|string|max:50',
+            'tipe_rumah' => 'nullable|string|max:255',
+            'luas_tanah' => 'nullable|numeric|min:0',
+            'luas_bangunan' => 'nullable|numeric|min:0',
+            'tahun_pembelian' => 'required|integer|min:1990|max:' . ((int) date('Y') + 1),
+            'jenis_pembayaran' => 'required|in:inhouse,cash_lunak',
+            'harga_rumah' => 'required|numeric|min:0',
+            'uang_muka' => 'nullable|numeric|min:0',
+            'nominal_angsuran' => 'nullable|numeric|min:0',
+            'tenor_bulan' => 'required|integer|min:1|max:600',
+            'sisa_tempo' => 'nullable|integer|min:0|max:600',
+            'tunggakan' => 'nullable|integer|min:0|max:600',
+            'sisa_pembayaran' => 'nullable|numeric|min:0',
+            'tanggal_akad' => 'nullable|date',
+            'keterangan' => 'nullable|string',
+            'create_user_account' => 'nullable',
+            'login_email' => 'nullable|email',
+            'login_password' => 'nullable|string|min:6',
+        ];
+
+        if ($wajibStatus) {
+            $rules['status'] = 'required|in:aktif,lunas,bermasalah';
+        }
+
+        return $rules;
+    }
+
+    private function dataRekap(array $validated, ?string $status = null): array
+    {
+        $uangMuka = round((float) ($validated['uang_muka'] ?? 0));
+        $harga = round((float) $validated['harga_rumah']);
+        $tempo = (int) $validated['tenor_bulan'];
+        $sisaTempo = array_key_exists('sisa_tempo', $validated) && $validated['sisa_tempo'] !== null
+            ? (int) $validated['sisa_tempo']
+            : $tempo;
+
+        $nominal = (isset($validated['nominal_angsuran']) && $validated['nominal_angsuran'] !== null)
+            ? (float) $validated['nominal_angsuran']
+            : ($tempo > 0 ? ($harga - $uangMuka) / $tempo : 0);
+        $nominal = round($nominal);
+
+        $tunggakan = $validated['tunggakan'] ?? null;
+        $tunggakan = ($tunggakan === null || (int) $tunggakan === 0) ? null : (int) $tunggakan;
+
+        $sisaBayar = array_key_exists('sisa_pembayaran', $validated) && $validated['sisa_pembayaran'] !== null
+            ? round((float) $validated['sisa_pembayaran'])
+            : round($sisaTempo * $nominal);
+
+        $tanggalAkad = $validated['tanggal_akad'] ?? null;
+        if (!$tanggalAkad && !empty($validated['tahun_pembelian'])) {
+            $tanggalAkad = sprintf('%04d-01-01', (int) $validated['tahun_pembelian']);
+        }
+
+        if ($status === null) {
+            $status = ($sisaBayar <= 0 && $sisaTempo <= 0) ? 'lunas' : 'aktif';
+        }
+
+        return [
+            'perumahan_id' => $validated['perumahan_id'],
+            'nama_lengkap' => $validated['nama_lengkap'],
+            'nik' => $validated['nik'] ?? null,
+            'no_hp' => $validated['no_hp'] ?? null,
+            'email' => $validated['email'] ?? null,
+            'blok_kavling' => $validated['blok_kavling'],
+            'tipe_rumah' => $validated['tipe_rumah'] ?? null,
+            'luas_tanah' => $validated['luas_tanah'] ?? null,
+            'luas_bangunan' => $validated['luas_bangunan'] ?? null,
+            'tahun_pembelian' => $validated['tahun_pembelian'],
+            'jenis_pembayaran' => $validated['jenis_pembayaran'],
+            'harga_rumah' => $harga,
+            'uang_muka' => $uangMuka,
+            'nominal_angsuran' => $nominal,
+            'sisa_angsuran' => max(0, $sisaBayar),
+            'tenor_bulan' => $tempo,
+            'sisa_tempo' => $sisaTempo,
+            'tunggakan' => $tunggakan,
+            'tanggal_akad' => $tanggalAkad,
+            'status' => $status,
+            'keterangan' => $validated['keterangan'] ?? null,
+        ];
     }
 }

@@ -32,12 +32,6 @@
             </label>
         </div>
 
-        <div class="mb-4 p-3 bg-indigo-50 border border-indigo-100 rounded-lg text-xs text-indigo-800">
-            <div class="font-semibold mb-1">Demo Login Credentials:</div>
-            <div>Email: <code class="bg-indigo-100 px-1 py-0.5 rounded">admin@legalitasgo.com</code></div>
-            <div>Password: <code class="bg-indigo-100 px-1 py-0.5 rounded">password</code></div>
-        </div>
-
         <div class="flex items-center justify-between mt-4">
             <a class="underline text-sm text-gray-600 hover:text-indigo-600 rounded-md focus:outline-none" href="{{ route('public.report') }}">
                 &larr; Lihat Laporan Publik

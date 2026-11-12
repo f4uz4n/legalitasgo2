@@ -712,7 +712,7 @@
                     <i class="bi bi-credit-card-2-front-fill"></i> Cicilan Angsuran
                 </a>
                 <a href="{{ route('penghuni.index') }}" class="nav-link {{ request()->routeIs('penghuni.*') ? 'active' : '' }}">
-                    <i class="bi bi-people-fill"></i> Data Warga / Kavling
+                    <i class="bi bi-people-fill"></i> Rekap Pengangsur
                 </a>
 
                 <div class="nav-section">Arus Kas & Pengeluaran</div>

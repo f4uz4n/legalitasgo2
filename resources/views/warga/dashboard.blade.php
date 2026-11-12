@@ -33,7 +33,16 @@
                 Tipe: <strong>{{ $penghuni->tipe_rumah ?? '36/72' }}</strong>
             </p>
         </div>
-        <div class="d-flex flex-wrap gap-2">
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <form method="GET" action="{{ route('dashboard') }}" class="d-flex align-items-center gap-2">
+                <label for="tahun-warga" class="small text-muted mb-0">Tahun</label>
+                <select id="tahun-warga" name="tahun" class="form-select form-select-sm" style="width: 8.5rem;" onchange="this.form.submit()">
+                    <option value="semua" @selected($tahunDipilih === null)>Semua tahun</option>
+                    @foreach($daftarTahun as $tahun)
+                        <option value="{{ $tahun }}" @selected($tahunDipilih === (int) $tahun)>{{ $tahun }}</option>
+                    @endforeach
+                </select>
+            </form>
             <a href="{{ route('public.report') }}" target="_blank" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1 shadow-sm">
                 <i class="bi bi-globe2"></i> Laporan Live Transparansi
             </a>
@@ -45,11 +54,11 @@
 </div>
 
 @php
-    $totalAngsuranTerbayar = $penghuni->angsuran->where('status', 'lunas')->sum('jumlah_bayar');
-    $totalTerkumpul = $penghuni->uang_muka + $totalAngsuranTerbayar;
-    $persenBayar = $penghuni->harga_rumah > 0 ? round(($totalTerkumpul / $penghuni->harga_rumah) * 100, 1) : 0;
-    $sisaAngsuran = max(0, $penghuni->harga_rumah - $totalTerkumpul);
-    $angsuranBerikutnya = $penghuni->angsuran->where('status', 'belum_bayar')->first();
+    $sisaAngsuran = max(0, (float) $penghuni->sisa_angsuran);
+    $totalTerkumpul = (float) $penerimaanAngsuran;
+    $targetAngsuran = (float) ($tahunDipilih === null ? $penghuni->angsuran->sum('jumlah_angsuran') : $angsuranTampil->sum('jumlah_angsuran'));
+    $persenBayar = $targetAngsuran > 0 ? round(($totalTerkumpul / $targetAngsuran) * 100, 1) : 0;
+    $angsuranBerikutnya = $penghuni->angsuran->first(fn ($a) => $a->status !== 'lunas');
 @endphp
 
 <!-- 4 Key Resident Metric Cards -->
@@ -77,7 +86,7 @@
     <div class="col-xl-3 col-md-6">
         <div class="stat-card-white h-100">
             <div class="d-flex justify-content-between align-items-start mb-2">
-                <div class="stat-sublabel text-success">Total Dana Terbayar</div>
+                <div class="stat-sublabel text-success">Angsuran Masuk</div>
                 <div class="stat-icon-wrapper icon-green">
                     <i class="bi bi-check-circle-fill"></i>
                 </div>
@@ -86,12 +95,13 @@
                 Rp {{ number_format($totalTerkumpul, 0, ',', '.') }}
             </div>
             <div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center small">
-                <span class="text-muted">Progres Angsuran:</span>
+                <span class="text-muted">Progress input angsuran:</span>
                 <span class="fw-bold text-dark">{{ $persenBayar }}%</span>
             </div>
             <div class="progress mt-1" style="height: 6px;">
                 <div class="progress-bar bg-success" role="progressbar" style="width: {{ min($persenBayar, 100) }}%"></div>
             </div>
+            <div class="text-secondary small mt-1">Tidak termasuk uang muka</div>
         </div>
     </div>
 
@@ -108,7 +118,7 @@
                 Rp {{ number_format($sisaAngsuran, 0, ',', '.') }}
             </div>
             <div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center small">
-                <span class="text-muted">Cicilan per Bulan:</span>
+                <span class="text-muted">Angsuran / tempo:</span>
                 <span class="fw-bold text-dark">Rp {{ number_format($penghuni->angsuran_bulanan, 0, ',', '.') }}</span>
             </div>
         </div>
@@ -155,8 +165,8 @@
                     </div>
                     <div class="col-sm-6">
                         <div class="p-3 rounded-3 bg-light border">
-                            <small class="text-muted d-block">Tenor Cicilan</small>
-                            <span class="fw-bold text-dark fs-6">{{ $penghuni->tenor_bulan }} Bulan</span>
+                            <small class="text-muted d-block">Tempo / Sisa Tempo</small>
+                            <span class="fw-bold text-dark fs-6">{{ $penghuni->tempo_label }} / {{ $penghuni->sisa_tempo_label }}</span>
                         </div>
                     </div>
                     <div class="col-sm-6">
@@ -167,10 +177,8 @@
                     </div>
                     <div class="col-sm-6">
                         <div class="p-3 rounded-3 bg-light border">
-                            <small class="text-muted d-block">Status Kepemilikan</small>
-                            <span class="badge bg-{{ $penghuni->status === 'lunas' ? 'success' : 'primary' }} mt-1">
-                                {{ ucfirst($penghuni->status) }}
-                            </span>
+                            <small class="text-muted d-block">Pembayaran · Tunggakan</small>
+                            <span class="fw-bold text-dark fs-6">{{ $penghuni->jenis_pembayaran_label }} · {{ $penghuni->tunggakan_label }}</span>
                         </div>
                     </div>
                 </div>
@@ -265,7 +273,10 @@
 <div class="content-card mb-4" id="jadwal-angsuran">
     <div class="card-header">
         <span><i class="bi bi-calendar-check me-2"></i>Jadwal & Riwayat Pembayaran Angsuran</span>
-        <span class="badge bg-light text-dark border">{{ $penghuni->angsuran->count() }} Kali Cicilan</span>
+        <span class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="small text-muted">Angsuran masuk {{ $tahunDipilih ? $tahunDipilih : 'semua tahun' }}: <strong class="text-success">Rp {{ number_format($penerimaanAngsuran, 0, ',', '.') }}</strong></span>
+            <span class="badge bg-light text-dark border">{{ $angsuranTampil->count() }} Kali Cicilan</span>
+        </span>
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -282,7 +293,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($penghuni->angsuran as $a)
+                    @forelse($angsuranTampil as $a)
                     <tr>
                         <td>
                             <span class="badge bg-light text-dark fw-bold border">{{ $a->angsuran_ke }}</span>
@@ -311,7 +322,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="text-center text-muted py-4">Belum ada jadwal angsuran</td>
+                        <td colspan="7" class="text-center text-muted py-4">Belum ada jadwal angsuran{{ $tahunDipilih ? ' pada tahun ' . $tahunDipilih : '' }}</td>
                     </tr>
                     @endforelse
                 </tbody>

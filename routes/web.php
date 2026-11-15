@@ -55,6 +55,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Penghuni Management
         Route::get('/penghuni', [PenghuniController::class, 'index'])->name('penghuni.index');
+        Route::get('/penghuni/unduh', [PenghuniController::class, 'unduh'])->name('penghuni.unduh');
         Route::get('/penghuni/create', [PenghuniController::class, 'create'])->name('penghuni.create');
         Route::post('/penghuni', [PenghuniController::class, 'store'])->name('penghuni.store');
         Route::get('/penghuni/{penghuni}/edit', [PenghuniController::class, 'edit'])->name('penghuni.edit');

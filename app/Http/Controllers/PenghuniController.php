@@ -12,44 +12,7 @@ class PenghuniController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Penghuni::with(['perumahan', 'user']);
-
-        if ($request->filled('nama')) {
-            $nama = $request->nama;
-            $query->where(function ($q) use ($nama) {
-                $q->where('nama_lengkap', 'like', '%' . $nama . '%')
-                  ->orWhere('nik', 'like', '%' . $nama . '%');
-            });
-        }
-
-        if ($request->filled('rumah')) {
-            $query->where('blok_kavling', 'like', '%' . $request->rumah . '%');
-        }
-
-        if ($request->filled('search')) {
-            $kata = $request->search;
-            $query->where(function ($q) use ($kata) {
-                $q->where('nama_lengkap', 'like', '%' . $kata . '%')
-                  ->orWhere('blok_kavling', 'like', '%' . $kata . '%')
-                  ->orWhere('nik', 'like', '%' . $kata . '%');
-            });
-        }
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->filled('jenis_pembayaran')) {
-            $query->where('jenis_pembayaran', $request->jenis_pembayaran);
-        }
-
-        if ($request->filled('tahun_pembelian')) {
-            $query->where('tahun_pembelian', $request->tahun_pembelian);
-        }
-
-        if ($request->filled('perumahan_id')) {
-            $query->where('perumahan_id', $request->perumahan_id);
-        }
+        $query = $this->queryRekap($request);
 
         $totalPengangsur = (clone $query)->count();
         $totalSisaPembayaran = (clone $query)->sum('sisa_angsuran');
@@ -69,6 +32,23 @@ class PenghuniController extends Controller
             'totalPengangsur',
             'totalSisaPembayaran'
         ));
+    }
+
+    public function unduh(Request $request)
+    {
+        $baris = $this->queryRekap($request)
+            ->orderBy('blok_kavling')
+            ->orderBy('nama_lengkap')
+            ->get();
+
+        $perumahan = Perumahan::query()->value('nama_perumahan') ?: 'Perumahan';
+        $namaFile = 'rekap-pengangsur-' . now()->format('Y-m-d') . '.xls';
+        $xml = $this->rekapSebagaiExcel($baris, $perumahan);
+
+        return response($xml, 200, [
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $namaFile . '"',
+        ]);
     }
 
     public function create()
@@ -307,5 +287,110 @@ class PenghuniController extends Controller
             'status' => $status,
             'keterangan' => $validated['keterangan'] ?? null,
         ];
+    }
+
+    private function queryRekap(Request $request)
+    {
+        $query = Penghuni::query();
+
+        if ($request->filled('nama')) {
+            $nama = $request->nama;
+            $query->where(function ($q) use ($nama) {
+                $q->where('nama_lengkap', 'like', '%' . $nama . '%')
+                  ->orWhere('nik', 'like', '%' . $nama . '%');
+            });
+        }
+
+        if ($request->filled('rumah')) {
+            $query->where('blok_kavling', 'like', '%' . $request->rumah . '%');
+        }
+
+        if ($request->filled('search')) {
+            $kata = $request->search;
+            $query->where(function ($q) use ($kata) {
+                $q->where('nama_lengkap', 'like', '%' . $kata . '%')
+                  ->orWhere('blok_kavling', 'like', '%' . $kata . '%')
+                  ->orWhere('nik', 'like', '%' . $kata . '%');
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('jenis_pembayaran')) {
+            $query->where('jenis_pembayaran', $request->jenis_pembayaran);
+        }
+
+        if ($request->filled('tahun_pembelian')) {
+            $query->where('tahun_pembelian', $request->tahun_pembelian);
+        }
+
+        if ($request->filled('perumahan_id')) {
+            $query->where('perumahan_id', $request->perumahan_id);
+        }
+
+        return $query;
+    }
+
+    private function rekapSebagaiExcel($baris, string $perumahan): string
+    {
+        $judul = htmlspecialchars($perumahan, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+        $sel = function ($nilai, string $tipe = 'String') {
+            $teks = htmlspecialchars((string) $nilai, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+
+            return '<Cell><Data ss:Type="' . $tipe . '">' . $teks . '</Data></Cell>';
+        };
+        $uang = function ($nilai) use ($sel) {
+            return $sel((string) (int) round((float) $nilai), 'Number');
+        };
+
+        $isi = '<Row>'
+            . $sel('NO')
+            . $sel('NAMA')
+            . $sel('BLOK')
+            . $sel('TAHUN PEMBELIAN')
+            . $sel('PEMBAYARAN')
+            . $sel('HARGA')
+            . $sel('UANG MUKA')
+            . $sel('ANGSURAN')
+            . $sel('TEMPO')
+            . $sel('SISA TEMPO')
+            . $sel('TUNGGAKAN')
+            . $sel('SISA PEMBAYARAN')
+            . '</Row>';
+
+        $jumlah = 0;
+        foreach ($baris as $i => $p) {
+            $jumlah += (float) $p->sisa_angsuran;
+            $isi .= '<Row>'
+                . $sel((string) ($i + 1), 'Number')
+                . $sel($p->nama_lengkap)
+                . $sel($p->blok_kavling)
+                . $sel((string) ($p->tahun_pembelian ?? ''), $p->tahun_pembelian ? 'Number' : 'String')
+                . $sel($p->jenis_pembayaran_label)
+                . $uang($p->harga_rumah)
+                . $uang($p->uang_muka)
+                . $uang($p->angsuran_bulanan)
+                . $sel($p->tempo_label)
+                . $sel($p->sisa_tempo_label)
+                . $sel($p->tunggakan_label)
+                . $uang($p->sisa_angsuran)
+                . '</Row>';
+        }
+
+        $isi .= '<Row>'
+            . str_repeat('<Cell></Cell>', 10)
+            . $sel('JUMLAH')
+            . $uang($jumlah)
+            . '</Row>';
+
+        return '<?xml version="1.0" encoding="UTF-8"?>'
+            . '<?mso-application progid="Excel.Sheet"?>'
+            . '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">'
+            . '<Worksheet ss:Name="Rekap Pengangsur"><Table>'
+            . '<Row><Cell ss:MergeAcross="11"><Data ss:Type="String">REKAP PENGANGSUR ' . $judul . '</Data></Cell></Row>'
+            . $isi
+            . '</Table></Worksheet></Workbook>';
     }
 }

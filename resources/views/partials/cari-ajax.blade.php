@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', function () {
     let timer = null;
     let kontrol = null;
     const sinkron = @json($sinkron ?? []);
+    const unduh = @json($unduhId ?? '') ? document.getElementById(@json($unduhId ?? '')) : null;
+    const unduhDasar = @json($unduhUrl ?? '');
 
     function urlDariForm(pageUrl) {
         if (pageUrl) return pageUrl;
@@ -42,6 +44,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (sumber && tujuan && tujuan !== hasil) tujuan.innerHTML = sumber.innerHTML;
             });
             history.replaceState(null, '', url);
+            if (unduh && unduhDasar) {
+                const tanya = url.indexOf('?');
+                unduh.href = unduhDasar + (tanya >= 0 ? url.slice(tanya) : '');
+            }
             hasil.style.opacity = '1';
         }).catch(function (err) {
             if (err.name !== 'AbortError') hasil.style.opacity = '1';

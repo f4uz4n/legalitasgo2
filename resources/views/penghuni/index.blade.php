@@ -10,7 +10,12 @@
         <h4 class="fw-bold mb-1">Rekap Pembayaran Pembelian Unit</h4>
         <div class="text-muted small" id="rekap-ringkas">{{ $sharedPerumahan->nama_perumahan ?? 'Perumahan' }} · {{ number_format($totalPengangsur) }} pengangsur</div>
     </div>
-    <a href="{{ route('penghuni.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Tambah Pengangsur</a>
+    <div class="d-flex gap-2">
+        <a id="unduh-rekap" href="{{ route('penghuni.unduh', request()->only(['nama', 'rumah', 'search', 'status', 'jenis_pembayaran', 'tahun_pembelian', 'perumahan_id'])) }}" class="btn btn-outline-success">
+            <i class="bi bi-download me-1"></i> Unduh Data
+        </a>
+        <a href="{{ route('penghuni.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Tambah Pengangsur</a>
+    </div>
 </div>
 
 <div class="content-card mb-4">
@@ -126,7 +131,7 @@
         {{ $penghuni->onEachSide(1)->links() }}
     </div>
 </div>
-@include('partials.cari-ajax', ['formId' => 'form-cari-penghuni', 'hasilId' => 'hasil-penghuni', 'sinkron' => ['rekap-ringkas']])
+@include('partials.cari-ajax', ['formId' => 'form-cari-penghuni', 'hasilId' => 'hasil-penghuni', 'sinkron' => ['rekap-ringkas'], 'unduhId' => 'unduh-rekap', 'unduhUrl' => route('penghuni.unduh')])
 
 <style>
     .table-rekap { font-size: 0.78rem; }

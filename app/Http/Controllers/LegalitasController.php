@@ -17,10 +17,31 @@ class LegalitasController extends Controller
             $query->where('status', $request->status);
         }
 
+        if ($request->filled('nama')) {
+            $nama = $request->nama;
+            $query->where(function ($q) use ($nama) {
+                $q->where('notaris', 'like', '%' . $nama . '%')
+                  ->orWhereHas('penghuni', function ($p) use ($nama) {
+                      $p->where('nama_lengkap', 'like', '%' . $nama . '%');
+                  });
+            });
+        }
+
+        if ($request->filled('rumah')) {
+            $rumah = $request->rumah;
+            $query->whereHas('penghuni', function ($q) use ($rumah) {
+                $q->where('blok_kavling', 'like', '%' . $rumah . '%');
+            });
+        }
+
         if ($request->filled('search')) {
-            $query->whereHas('penghuni', function ($q) use ($request) {
-                $q->where('nama_lengkap', 'like', '%' . $request->search . '%')
-                  ->orWhere('blok_kavling', 'like', '%' . $request->search . '%');
+            $kata = $request->search;
+            $query->where(function ($q) use ($kata) {
+                $q->where('notaris', 'like', '%' . $kata . '%')
+                  ->orWhereHas('penghuni', function ($p) use ($kata) {
+                      $p->where('nama_lengkap', 'like', '%' . $kata . '%')
+                        ->orWhere('blok_kavling', 'like', '%' . $kata . '%');
+                  });
             });
         }
 

@@ -14,11 +14,24 @@ class PenghuniController extends Controller
     {
         $query = Penghuni::with(['perumahan', 'user']);
 
+        if ($request->filled('nama')) {
+            $nama = $request->nama;
+            $query->where(function ($q) use ($nama) {
+                $q->where('nama_lengkap', 'like', '%' . $nama . '%')
+                  ->orWhere('nik', 'like', '%' . $nama . '%');
+            });
+        }
+
+        if ($request->filled('rumah')) {
+            $query->where('blok_kavling', 'like', '%' . $request->rumah . '%');
+        }
+
         if ($request->filled('search')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('nama_lengkap', 'like', '%' . $request->search . '%')
-                  ->orWhere('blok_kavling', 'like', '%' . $request->search . '%')
-                  ->orWhere('nik', 'like', '%' . $request->search . '%');
+            $kata = $request->search;
+            $query->where(function ($q) use ($kata) {
+                $q->where('nama_lengkap', 'like', '%' . $kata . '%')
+                  ->orWhere('blok_kavling', 'like', '%' . $kata . '%')
+                  ->orWhere('nik', 'like', '%' . $kata . '%');
             });
         }
 

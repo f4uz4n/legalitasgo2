@@ -8,17 +8,21 @@
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <div>
         <h4 class="fw-bold mb-1">Rekap Pembayaran Pembelian Unit</h4>
-        <div class="text-muted small">{{ $sharedPerumahan->nama_perumahan ?? 'Perumahan' }} · {{ number_format($totalPengangsur) }} pengangsur</div>
+        <div class="text-muted small" id="rekap-ringkas">{{ $sharedPerumahan->nama_perumahan ?? 'Perumahan' }} · {{ number_format($totalPengangsur) }} pengangsur</div>
     </div>
     <a href="{{ route('penghuni.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Tambah Pengangsur</a>
 </div>
 
 <div class="content-card mb-4">
     <div class="card-body py-3">
-        <form action="{{ route('penghuni.index') }}" method="GET" class="row g-3 align-items-end">
-            <div class="col-lg-4">
-                <label class="form-label small mb-1">Cari</label>
-                <input type="text" name="search" class="form-control" placeholder="Nama, blok, atau NIK" value="{{ request('search') }}">
+        <form id="form-cari-penghuni" action="{{ route('penghuni.index') }}" method="GET" class="row g-3 align-items-end">
+            <div class="col-lg-3">
+                <label class="form-label small mb-1">Nama</label>
+                <input type="text" name="nama" class="form-control" placeholder="Ketik nama atau NIK" value="{{ request('nama') }}" autocomplete="off">
+            </div>
+            <div class="col-lg-3">
+                <label class="form-label small mb-1">Rumah / Blok</label>
+                <input type="text" name="rumah" class="form-control" placeholder="Ketik blok, contoh A-01" value="{{ request('rumah') }}" autocomplete="off">
             </div>
             <div class="col-lg-2">
                 <label class="form-label small mb-1">Pembayaran</label>
@@ -54,7 +58,7 @@
     </div>
 </div>
 
-<div class="content-card">
+<div class="content-card" id="hasil-penghuni">
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-rekap table-hover mb-0">
@@ -122,6 +126,7 @@
         {{ $penghuni->onEachSide(1)->links() }}
     </div>
 </div>
+@include('partials.cari-ajax', ['formId' => 'form-cari-penghuni', 'hasilId' => 'hasil-penghuni', 'sinkron' => ['rekap-ringkas']])
 
 <style>
     .table-rekap { font-size: 0.78rem; }

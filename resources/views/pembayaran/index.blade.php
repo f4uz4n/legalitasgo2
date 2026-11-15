@@ -126,7 +126,7 @@
 <!-- Filter Toolbar & Navigation Box -->
 <div class="card-custom mb-4 p-3 bg-white">
     <!-- Status Tabs / Quick Pills -->
-    <div class="d-flex flex-wrap align-items-center gap-2 mb-3 pb-3 border-bottom">
+    <div id="status-cicilan" class="d-flex flex-wrap align-items-center gap-2 mb-3 pb-3 border-bottom">
         <span class="text-muted small fw-bold text-uppercase me-1"><i class="bi bi-funnel text-primary"></i> Status:</span>
         <a href="{{ route('pembayaran.index', array_merge(request()->except('status', 'page'), [])) }}" 
            class="btn btn-sm {{ !request()->filled('status') ? 'btn-primary' : 'btn-light border' }}">
@@ -151,9 +151,12 @@
     </div>
 
     <!-- Filter Form: Range Tanggal, Bulan, Urutan & Pencarian -->
-    <form action="{{ route('pembayaran.index') }}" method="GET" class="row g-2 align-items-end">
+    <form id="form-cari-cicilan" action="{{ route('pembayaran.index') }}" method="GET" class="row g-2 align-items-end">
         @if(request()->filled('status'))
             <input type="hidden" name="status" value="{{ request('status') }}">
+        @endif
+        @if($isAll)
+            <input type="hidden" name="periode" value="all">
         @endif
 
         <!-- Filter Bulan Dropdown -->
@@ -203,17 +206,19 @@
             </select>
         </div>
 
-        <!-- Cari Nama Warga / Kavling -->
+        <!-- Cari nama dan rumah, tabel berubah saat diketik -->
+        <div class="col-lg-3 col-md-4 col-sm-6">
+            <label class="form-label small fw-bold text-muted mb-1">Nama</label>
+            <input type="text" name="nama" class="form-control form-control-sm" placeholder="Ketik nama warga" value="{{ request('nama') }}" autocomplete="off">
+        </div>
         <div class="col-lg-2 col-md-4 col-sm-6">
-            <label class="form-label small fw-bold text-muted mb-1">Pencarian</label>
-            <div class="input-group input-group-sm">
-                <input type="text" name="search" class="form-control form-control-sm" placeholder="Nama / Kavling..." value="{{ request('search') }}">
-            </div>
+            <label class="form-label small fw-bold text-muted mb-1">Rumah / Blok</label>
+            <input type="text" name="rumah" class="form-control form-control-sm" placeholder="Ketik blok" value="{{ request('rumah') }}" autocomplete="off">
         </div>
 
         <!-- Tombol Filter & Reset -->
-        <div class="col-lg-1 col-md-4 d-flex gap-1">
-            <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold" title="Terapkan Filter">
+        <div class="col-lg-auto col-md-4 d-flex gap-1">
+            <button type="submit" class="btn btn-primary btn-sm fw-bold" title="Terapkan Filter">
                 <i class="bi bi-funnel"></i>
             </button>
             <a href="{{ route('pembayaran.index', ['periode' => 'all']) }}" class="btn btn-light border btn-sm" title="Tampilkan Semua Periode / Reset Filter">
@@ -223,7 +228,7 @@
     </form>
 
     <!-- Indikator Banner Filter Aktif -->
-    <div class="mt-3 pt-2 border-top d-flex flex-wrap align-items-center justify-content-between gap-2 small">
+    <div id="info-cicilan" class="mt-3 pt-2 border-top d-flex flex-wrap align-items-center justify-content-between gap-2 small">
         <div class="d-flex align-items-center gap-2 flex-wrap">
             <span class="text-muted"><i class="bi bi-info-circle text-primary me-1"></i> Tampilan Saat Ini:</span>
             @if($isAll)
@@ -277,7 +282,7 @@
 </div>
 
 <!-- Main Table Card -->
-<div class="card-custom bg-white">
+<div class="card-custom bg-white" id="hasil-cicilan">
     <div class="card-header bg-white border-bottom py-3 px-4 d-flex align-items-center justify-content-between">
         <div class="d-flex align-items-center gap-2">
             <span class="fw-bold text-dark"><i class="bi bi-table text-primary me-1"></i> Daftar Jadwal &amp; Pembayaran Angsuran</span>
@@ -521,6 +526,7 @@
         </div>
     </div>
 </div>
+@include('partials.cari-ajax', ['formId' => 'form-cari-cicilan', 'hasilId' => 'hasil-cicilan', 'sinkron' => ['status-cicilan', 'info-cicilan']])
 
 <!-- Modal Dialog Preview Bukti Bayar / Struk Transfer -->
 <div class="modal fade" id="modalPreviewBukti" tabindex="-1" aria-labelledby="modalPreviewBuktiLabel" aria-hidden="true">

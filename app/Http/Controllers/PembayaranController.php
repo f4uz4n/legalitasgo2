@@ -103,11 +103,27 @@ class PembayaranController extends Controller
             }
         }
 
+        if ($request->filled('nama')) {
+            $nama = $request->nama;
+            $query->whereHas('penghuni', function ($q) use ($nama) {
+                $q->where('nama_lengkap', 'like', '%' . $nama . '%')
+                  ->orWhere('nik', 'like', '%' . $nama . '%');
+            });
+        }
+
+        if ($request->filled('rumah')) {
+            $rumah = $request->rumah;
+            $query->whereHas('penghuni', function ($q) use ($rumah) {
+                $q->where('blok_kavling', 'like', '%' . $rumah . '%');
+            });
+        }
+
         if ($request->filled('search')) {
-            $query->whereHas('penghuni', function ($q) use ($request) {
-                $q->where('nama_lengkap', 'like', '%' . $request->search . '%')
-                  ->orWhere('blok_kavling', 'like', '%' . $request->search . '%')
-                  ->orWhere('nik', 'like', '%' . $request->search . '%');
+            $kata = $request->search;
+            $query->whereHas('penghuni', function ($q) use ($kata) {
+                $q->where('nama_lengkap', 'like', '%' . $kata . '%')
+                  ->orWhere('blok_kavling', 'like', '%' . $kata . '%')
+                  ->orWhere('nik', 'like', '%' . $kata . '%');
             });
         }
 

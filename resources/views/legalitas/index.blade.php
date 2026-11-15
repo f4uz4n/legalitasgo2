@@ -24,7 +24,7 @@
 <ul class="nav nav-pills mb-4 gap-2" id="legalitasTabs" role="tablist">
     <li class="nav-item">
         <button class="nav-link active px-4 py-2 rounded-3 fw-bold" id="berkas-tab" data-bs-toggle="pill" data-bs-target="#tabBerkas" type="button">
-            <i class="bi bi-files me-1"></i> Berkas Sertifikat Per Kavling ({{ $legalitas->total() }})
+            <i class="bi bi-files me-1"></i> Berkas Sertifikat Per Kavling (<span id="jumlah-berkas">{{ $legalitas->total() }}</span>)
         </button>
     </li>
     <li class="nav-item">
@@ -38,9 +38,14 @@
     <!-- TAB 1: Berkas Sertifikat Per Kavling -->
     <div class="tab-pane fade show active" id="tabBerkas" role="tabpanel">
         <div class="card-custom mb-4 p-3 bg-white">
-            <form action="{{ route('legalitas.index') }}" method="GET" class="row g-3 align-items-end">
-                <div class="col-md-5">
-                    <input type="text" name="search" class="form-control" placeholder="Cari nama warga, blok kavling, atau notaris..." value="{{ request('search') }}">
+            <form id="form-cari-legalitas" action="{{ route('legalitas.index') }}" method="GET" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label small mb-1">Nama</label>
+                    <input type="text" name="nama" class="form-control" placeholder="Ketik nama warga atau notaris" value="{{ request('nama') }}" autocomplete="off">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-1">Rumah / Blok</label>
+                    <input type="text" name="rumah" class="form-control" placeholder="Ketik blok kavling" value="{{ request('rumah') }}" autocomplete="off">
                 </div>
                 <div class="col-md-3">
                     <select name="status" class="form-select">
@@ -60,7 +65,7 @@
             </form>
         </div>
 
-        <div class="card-custom bg-white">
+        <div class="card-custom bg-white" id="hasil-legalitas">
             <div class="table-responsive">
                 <table class="table table-custom align-middle">
                     <thead>
@@ -263,4 +268,5 @@
         </div>
     </div>
 </div>
+@include('partials.cari-ajax', ['formId' => 'form-cari-legalitas', 'hasilId' => 'hasil-legalitas', 'sinkron' => ['jumlah-berkas']])
 @endsection

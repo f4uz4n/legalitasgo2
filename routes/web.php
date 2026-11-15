@@ -13,6 +13,7 @@ use App\Http\Controllers\SystemController;
 use App\Http\Controllers\ArsipDokumenController;
 use App\Http\Controllers\ReportPdfController;
 use App\Http\Controllers\OperatorController;
+use App\Http\Controllers\PortalTampilanController;
 use Illuminate\Support\Facades\Route;
 
 // ─── Public routes (tanpa login) ───────────────────────────────────────────────
@@ -65,6 +66,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/kas/masuk', [KasController::class, 'storeMasuk'])->name('kas.masuk.store');
         Route::post('/kas/keluar', [KasController::class, 'storeKeluar'])->name('kas.keluar.store');
         Route::post('/kas/kategori', [KasController::class, 'storeKategori'])->name('kas.kategori.store');
+        Route::post('/kas/masuk/{kasMasuk}/publik', [KasController::class, 'publikMasuk'])->name('kas.masuk.publik');
+        Route::post('/kas/keluar/{kasKeluar}/publik', [KasController::class, 'publikKeluar'])->name('kas.keluar.publik');
         Route::delete('/kas/masuk/{kasMasuk}', [KasController::class, 'destroyMasuk'])->name('kas.masuk.destroy');
         Route::delete('/kas/keluar/{kasKeluar}', [KasController::class, 'destroyKeluar'])->name('kas.keluar.destroy');
 
@@ -77,6 +80,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/legalitas/{legalita}', [LegalitasController::class, 'destroy'])->name('legalitas.destroy');
         Route::post('/legalitas/{legalita}/timeline', [LegalitasController::class, 'addTimeline'])->name('legalitas.timeline.store');
         Route::post('/timeline/store', [LegalitasController::class, 'storeTimelineDirect'])->name('timeline.store.direct');
+        Route::post('/timeline/{timeline}/publik', [LegalitasController::class, 'publikTimeline'])->name('timeline.publik');
+        Route::get('/portal-warga/pengaturan', [PortalTampilanController::class, 'edit'])->name('portal.pengaturan');
+        Route::put('/portal-warga/pengaturan', [PortalTampilanController::class, 'update'])->name('portal.pengaturan.update');
 
         // Kearsipan Dokumen Perumahan
         Route::get('/arsip', [ArsipDokumenController::class, 'index'])->name('arsip.index');

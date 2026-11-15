@@ -98,8 +98,14 @@
                                     <span class="text-muted small">-</span>
                                     @endif
                                 </td>
-                                <td>
-                                    <form action="{{ route('kas.masuk.destroy', $km) }}" method="POST" onsubmit="return confirm('Hapus?')">
+                                <td class="text-nowrap">
+                                    <form action="{{ route('kas.masuk.publik', $km) }}" method="POST" class="d-inline">
+                                        @csrf
+                                        <button class="btn btn-sm {{ $km->tampil_publik ? 'btn-outline-primary' : 'btn-outline-secondary' }} rounded-3" style="padding:2px 6px" title="{{ $km->tampil_publik ? 'Tampil di portal warga' : 'Disembunyikan dari portal warga' }}">
+                                            <i class="bi bi-eye{{ $km->tampil_publik ? '' : '-slash' }}" style="font-size:0.7rem"></i>
+                                        </button>
+                                    </form>
+                                    <form action="{{ route('kas.masuk.destroy', $km) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus?')">
                                         @csrf @method('DELETE')
                                         <button class="btn btn-sm btn-outline-danger rounded-3" style="padding:2px 6px"><i class="bi bi-trash" style="font-size:0.7rem"></i></button>
                                     </form>
@@ -151,8 +157,14 @@
                                     <span class="text-muted small">-</span>
                                     @endif
                                 </td>
-                                <td>
-                                    <form action="{{ route('kas.keluar.destroy', $kk) }}" method="POST" onsubmit="return confirm('Hapus?')">
+                                <td class="text-nowrap">
+                                    <form action="{{ route('kas.keluar.publik', $kk) }}" method="POST" class="d-inline">
+                                        @csrf
+                                        <button class="btn btn-sm {{ $kk->tampil_publik ? 'btn-outline-primary' : 'btn-outline-secondary' }} rounded-3" style="padding:2px 6px" title="{{ $kk->tampil_publik ? 'Tampil di portal warga' : 'Disembunyikan dari portal warga' }}">
+                                            <i class="bi bi-eye{{ $kk->tampil_publik ? '' : '-slash' }}" style="font-size:0.7rem"></i>
+                                        </button>
+                                    </form>
+                                    <form action="{{ route('kas.keluar.destroy', $kk) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus?')">
                                         @csrf @method('DELETE')
                                         <button class="btn btn-sm btn-outline-danger rounded-3" style="padding:2px 6px"><i class="bi bi-trash" style="font-size:0.7rem"></i></button>
                                     </form>
@@ -216,6 +228,10 @@
                         <label class="form-label">Keterangan</label>
                         <textarea name="keterangan" class="form-control" rows="2"></textarea>
                     </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="tampil_publik" id="masuk_tampil_publik" value="1" checked>
+                        <label class="form-check-label" for="masuk_tampil_publik">Tampil di portal warga</label>
+                    </div>
                 </div>
                 <div class="modal-footer border-0">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
@@ -268,6 +284,10 @@
                     <div class="mb-3">
                         <label class="form-label">Keterangan</label>
                         <textarea name="keterangan" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="tampil_publik" id="keluar_tampil_publik" value="1" checked>
+                        <label class="form-check-label" for="keluar_tampil_publik">Tampil di portal warga</label>
                     </div>
                 </div>
                 <div class="modal-footer border-0">

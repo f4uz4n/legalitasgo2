@@ -153,6 +153,9 @@
     </header>
 
     <div class="container py-4 my-2">
+        @if(empty($tampilTimeline))
+        <div class="alert alert-light border text-muted">Timeline pemberkasan sedang disembunyikan oleh pengelola.</div>
+        @else
         <div class="card-custom p-4 p-md-5 bg-white" style="border: 2px solid #bfdbfe;">
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4 pb-3 border-bottom">
                 <div>
@@ -219,11 +222,13 @@
                 @endforelse
             </div>
         </div>
+        @endif
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        document.getElementById('timelineSearch').addEventListener('input', function(e) {
+        const timelineSearch = document.getElementById('timelineSearch');
+        if (timelineSearch) timelineSearch.addEventListener('input', function(e) {
             const query = e.target.value.toLowerCase().trim();
             document.querySelectorAll('.timeline-item-filter').forEach(item => {
                 const text = item.getAttribute('data-title');

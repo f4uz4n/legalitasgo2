@@ -290,9 +290,11 @@
                     <span>LIVE REALTIME</span>
                 </div>
                 <!-- Popup Modal Trigger Button -->
+                @if($portal['timeline'])
                 <button type="button" class="btn btn-primary btn-sm rounded-3 fw-bold d-inline-flex align-items-center gap-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalTimelinePopup">
                     <i class="bi bi-window-stack"></i> <span class="d-none d-md-inline">Lihat Timeline (Popup Modal)</span>
                 </button>
+                @endif
                 <!-- PWA Install Button Warga -->
                 <button type="button" class="btn btn-outline-success btn-sm rounded-3 fw-bold d-inline-flex align-items-center gap-1 shadow-sm btn-trigger-pwa-install d-none d-sm-inline-flex" title="Pasang Aplikasi di HP">
                     <i class="bi bi-phone"></i> <span class="d-none d-sm-inline">Pasang App</span>
@@ -342,6 +344,7 @@
     <main class="container py-4 my-2">
         <!-- 3 Financial Transparency Cards -->
         <div class="row g-3 mb-4">
+            @if($portal['dana_masuk'])
             <!-- 1. Akumulasi Dana Masuk -->
             <div class="col-md-4">
                 <div class="metric-card-public highlight-blue h-100">
@@ -365,7 +368,9 @@
                     <div class="small text-muted mt-1">Tidak termasuk uang muka. Dihitung dari pembayaran angsuran yang dicatat.</div>
                 </div>
             </div>
+            @endif
 
+            @if($portal['pengeluaran'])
             <!-- 2. Segala Pengeluaran Kas -->
             <div class="col-md-4">
                 <div class="metric-card-public h-100">
@@ -384,7 +389,9 @@
                     </div>
                 </div>
             </div>
+            @endif
 
+            @if($portal['saldo'])
             <!-- 3. Saldo Kas Bersih -->
             <div class="col-md-4">
                 <div class="metric-card-public highlight-green h-100">
@@ -403,59 +410,74 @@
                     </div>
                 </div>
             </div>
+            @endif
         </div>
 
         <!-- ACTION BAR / TAB SELECTOR -->
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
             <ul class="nav nav-pills gap-2" id="publicReportTabs" role="tablist">
+                @if($portal['dana_masuk'])
                 <li class="nav-item">
-                    <button class="nav-link active" id="tab-uangmasuk-btn" data-bs-toggle="pill" data-bs-target="#tabUangMasuk" type="button">
+                    <button class="nav-link {{ $tabAwal === 'uangmasuk' ? 'active' : '' }}" id="tab-uangmasuk-btn" data-bs-toggle="pill" data-bs-target="#tabUangMasuk" type="button">
                         <i class="bi bi-calendar-check-fill me-1"></i> Akumulasi Uang Masuk By Bulan
                     </button>
                 </li>
+                @endif
+                @if($portal['timeline'])
                 <li class="nav-item">
-                    <button class="nav-link" id="tab-timeline-btn" data-bs-toggle="pill" data-bs-target="#tabTimeline" type="button">
+                    <button class="nav-link {{ $tabAwal === 'timeline' ? 'active' : '' }}" id="tab-timeline-btn" data-bs-toggle="pill" data-bs-target="#tabTimeline" type="button">
                         <i class="bi bi-clock-history me-1"></i> Timeline Pemberkasan Legalitas
                     </button>
                 </li>
+                @endif
+                @if($portal['pengeluaran'])
                 <li class="nav-item">
-                    <button class="nav-link" id="tab-pengeluaran-btn" data-bs-toggle="pill" data-bs-target="#tabPengeluaran" type="button">
+                    <button class="nav-link {{ $tabAwal === 'pengeluaran' ? 'active' : '' }}" id="tab-pengeluaran-btn" data-bs-toggle="pill" data-bs-target="#tabPengeluaran" type="button">
                         <i class="bi bi-receipt-cutoff me-1"></i> Rincian Pengeluaran Kas
                     </button>
                 </li>
+                @endif
+                @if($portal['log'])
                 <li class="nav-item">
-                    <button class="nav-link" id="tab-logaktivitas-btn" data-bs-toggle="pill" data-bs-target="#tabLogAktivitas" type="button">
+                    <button class="nav-link {{ $tabAwal === 'log' ? 'active' : '' }}" id="tab-logaktivitas-btn" data-bs-toggle="pill" data-bs-target="#tabLogAktivitas" type="button">
                         <i class="bi bi-shield-check me-1"></i> Log Aktivitas Admin
                         <span class="badge bg-primary text-white ms-1" style="font-size: 0.65rem;">AUDIT</span>
                     </button>
                 </li>
+                @endif
+                @if($portal['kearsipan'])
                 <li class="nav-item">
-                    <button class="nav-link" id="tab-arsip-btn" data-bs-toggle="pill" data-bs-target="#tabArsipDokumen" type="button">
+                    <button class="nav-link {{ $tabAwal === 'arsip' ? 'active' : '' }}" id="tab-arsip-btn" data-bs-toggle="pill" data-bs-target="#tabArsipDokumen" type="button">
                         <i class="bi bi-archive-fill me-1"></i> Kearsipan Dokumen
                         @if($arsipPublik->count() > 0)
                         <span class="badge bg-success text-white ms-1" style="font-size: 0.65rem;">{{ $arsipPublik->count() }}</span>
                         @endif
                     </button>
                 </li>
+                @endif
             </ul>
 
+            @if($portal['timeline'])
             <div class="d-flex gap-2">
-                <!-- Button Pop-up Modal -->
                 <button type="button" class="btn btn-outline-primary btn-sm rounded-3 fw-bold" data-bs-toggle="modal" data-bs-target="#modalTimelinePopup">
                     <i class="bi bi-arrows-fullscreen me-1"></i> Timeline (Popup Modal)
                 </button>
-                <!-- Button Tab Halaman Baru -->
                 <a href="{{ route('public.timeline') }}" target="_blank" class="btn btn-light border btn-sm rounded-3 fw-bold text-primary">
                     <i class="bi bi-box-arrow-up-right me-1"></i> Buka di Tab Baru ↗
                 </a>
             </div>
+            @endif
         </div>
+        @if(!$tabAwal)
+        <div class="alert alert-light border text-muted">Pengelola sedang menyembunyikan seluruh bagian portal warga.</div>
+        @endif
 
         <!-- TAB CONTENT -->
         <div class="tab-content" id="publicReportTabContent">
 
             <!-- TAB 1: TOTAL UANG MASUK BY BULAN SECARA AKUMULASI -->
-            <div class="tab-pane fade show active" id="tabUangMasuk" role="tabpanel">
+            @if($portal['dana_masuk'])
+            <div class="tab-pane fade {{ $tabAwal === 'uangmasuk' ? 'show active' : '' }}" id="tabUangMasuk" role="tabpanel">
                 <div class="card-custom p-4 bg-white mb-4" style="border: 2px solid #bfdbfe;">
                     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4 pb-3 border-bottom">
                         <div>
@@ -610,8 +632,10 @@
                 </div>
             </div>
 
+            @endif
+            @if($portal['timeline'])
             <!-- TAB 2: TIMELINE PEMBERKASAN LEGALITAS (IN-PAGE VIEW) -->
-            <div class="tab-pane fade" id="tabTimeline" role="tabpanel">
+            <div class="tab-pane fade {{ $tabAwal === 'timeline' ? 'show active' : '' }}" id="tabTimeline" role="tabpanel">
                 <div class="card-custom p-4 p-md-5 mb-4 bg-white" style="border: 2px solid #bfdbfe;">
                     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4 pb-3 border-bottom">
                         <div>
@@ -694,8 +718,10 @@
                 </div>
             </div>
 
+            @endif
+            @if($portal['pengeluaran'])
             <!-- TAB 3: RINCIAN PENGELUARAN KAS -->
-            <div class="tab-pane fade" id="tabPengeluaran" role="tabpanel">
+            <div class="tab-pane fade {{ $tabAwal === 'pengeluaran' ? 'show active' : '' }}" id="tabPengeluaran" role="tabpanel">
                 <div class="card-custom p-4 bg-white mb-4">
                     <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
                         <div>
@@ -758,8 +784,10 @@
                 </div>
             </div>
 
+            @endif
+            @if($portal['log'])
             <!-- TAB 4: LOG AKTIVITAS ADMIN (AUDIT TRAIL PUBLIK) -->
-            <div class="tab-pane fade" id="tabLogAktivitas" role="tabpanel">
+            <div class="tab-pane fade {{ $tabAwal === 'log' ? 'show active' : '' }}" id="tabLogAktivitas" role="tabpanel">
                 <div class="card-custom p-4 bg-white mb-4" style="border: 2px solid #bfdbfe;">
                     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4 pb-3 border-bottom">
                         <div>
@@ -871,8 +899,10 @@
                 </div>
             </div>
 
+            @endif
+            @if($portal['kearsipan'])
             <!-- TAB 5: KEARSIPAN DOKUMEN PUBLIK -->
-            <div class="tab-pane fade" id="tabArsipDokumen" role="tabpanel">
+            <div class="tab-pane fade {{ $tabAwal === 'arsip' ? 'show active' : '' }}" id="tabArsipDokumen" role="tabpanel">
                 <div class="card-custom p-4 bg-white mb-4" style="border: 2px solid #bfdbfe;">
                     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4 pb-3 border-bottom">
                         <div>
@@ -994,6 +1024,7 @@
                     @endif
                 </div>
             </div>
+            @endif
 
         </div>
     </main>
@@ -1196,7 +1227,9 @@
                 sumbuKasPortal.ticks.stepSize = 250000;
             }
 
-            const ctxCash = document.getElementById('publicCashflowChart').getContext('2d');
+            const canvasKas = document.getElementById('publicCashflowChart');
+            if (canvasKas) {
+            const ctxCash = canvasKas.getContext('2d');
             new Chart(ctxCash, {
                 type: 'bar',
                 data: {
@@ -1248,13 +1281,16 @@
                     }
                 }
             });
+            }
 
             // Expense Breakdown Chart
             const expenseData = @json($kasKeluarPerKategori);
             const expenseLabels = expenseData.map(i => i.kategori);
             const expenseTotals = expenseData.map(i => i.total);
 
-            const ctxExpense = document.getElementById('publicExpenseChart').getContext('2d');
+            const canvasKeluar = document.getElementById('publicExpenseChart');
+            if (canvasKeluar) {
+            const ctxExpense = canvasKeluar.getContext('2d');
             new Chart(ctxExpense, {
                 type: 'doughnut',
                 data: {
@@ -1273,18 +1309,24 @@
                     cutout: '65%'
                 }
             });
+            }
 
             // Realtime Auto-Polling (every 15 seconds)
             setInterval(function() {
                 fetch('{{ route('api.public.report') }}?tahun={{ $tahunDipilih ?? 'semua' }}')
                     .then(res => res.json())
                     .then(data => {
-                        document.getElementById('valTotalMasuk').innerText = formatRupiah(data.totalKasMasuk);
-                        document.getElementById('valTotalKeluar').innerText = formatRupiah(data.totalKasKeluar);
-                        document.getElementById('valSaldoKas').innerText = formatRupiah(data.saldoKas);
-                        document.getElementById('valProgress').innerText = data.progressCollecting + '%';
-                        document.getElementById('progressBar').style.width = Math.min(data.progressCollecting, 100) + '%';
-                        document.getElementById('lastUpdatedBadge').innerText = data.lastUpdated + ' WIB';
+                        const isi = function (id, teks) {
+                            const el = document.getElementById(id);
+                            if (el) el.innerText = teks;
+                        };
+                        isi('valTotalMasuk', formatRupiah(data.totalKasMasuk));
+                        isi('valTotalKeluar', formatRupiah(data.totalKasKeluar));
+                        isi('valSaldoKas', formatRupiah(data.saldoKas));
+                        isi('valProgress', data.progressCollecting + '%');
+                        const bar = document.getElementById('progressBar');
+                        if (bar) bar.style.width = Math.min(data.progressCollecting, 100) + '%';
+                        isi('lastUpdatedBadge', data.lastUpdated + ' WIB');
                     })
                     .catch(err => console.log('Polling update error:', err));
             }, 15000);

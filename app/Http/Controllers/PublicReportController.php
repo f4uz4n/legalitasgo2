@@ -10,16 +10,25 @@ use App\Models\Penghuni;
 use App\Models\Perumahan;
 use App\Models\TimelineLegalitas;
 use App\Models\ActivityLog;
+use App\Support\PortalWarga;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class PublicReportController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, PortalWarga $portalWarga)
     {
         $tahunDipilih = $this->tahunDariRequest($request);
         $daftarTahun = $this->daftarTahun();
         $ringkasAngsuran = $this->ringkasanAngsuran($tahunDipilih);
+        $portal = $portalWarga->semuanya();
+        $tabAwal = collect([
+            'uangmasuk' => $portal['dana_masuk'],
+            'timeline' => $portal['timeline'],
+            'pengeluaran' => $portal['pengeluaran'],
+            'log' => $portal['log'],
+            'arsip' => $portal['kearsipan'],
+        ])->filter()->keys()->first();
 
         // Single Perumahan
         $perumahan = Perumahan::first() ?? new Perumahan([
@@ -39,18 +48,19 @@ class PublicReportController extends Controller
         $progressCollecting = $ringkasAngsuran['persen'];
 
         // Cash flow summary
-        $kasMasuk = KasMasuk::query();
-        $kasKeluar = KasKeluar::query();
+        $kasMasuk = KasMasuk::query()->where('tampil_publik', true);
+        $kasKeluar = KasKeluar::query()->where('tampil_publik', true);
         if ($tahunDipilih !== null) {
             $kasMasuk->whereYear('tanggal', $tahunDipilih);
             $kasKeluar->whereYear('tanggal', $tahunDipilih);
         }
-        $totalKasMasuk = (clone $kasMasuk)->sum('jumlah');
-        $totalKasKeluar = (clone $kasKeluar)->sum('jumlah');
+        $totalKasMasuk = $portalWarga->nominalMasuk((float) (clone $kasMasuk)->sum('jumlah'));
+        $totalKasKeluar = (float) (clone $kasKeluar)->sum('jumlah');
         $saldoKas = $totalKasMasuk - $totalKasKeluar;
 
         // Uang masuk by bulan secara akumulasi kumulatif (running total)
         $pemasukanBulanan = KasMasuk::selectRaw("YEAR(tanggal) as tahun, MONTH(tanggal) as bulan, COUNT(*) as frekuensi, SUM(jumlah) as total_nominal")
+            ->where('tampil_publik', true)
             ->when($tahunDipilih !== null, fn ($q) => $q->whereYear('tanggal', $tahunDipilih))
             ->groupBy('tahun', 'bulan')
             ->orderBy('tahun', 'asc')
@@ -60,7 +70,8 @@ class PublicReportController extends Controller
         $runningTotal = 0;
         $uangMasukByBulan = [];
         foreach ($monthlyIncomeRaw as $row) {
-            $runningTotal += (float) $row->total_nominal;
+            $nominal = $portalWarga->nominalMasuk((float) $row->total_nominal);
+            $runningTotal += $nominal;
             $carbon = Carbon::createFromDate($row->tahun, $row->bulan, 1);
             $uangMasukByBulan[] = [
                 'periode_key' => sprintf('%04d-%02d', $row->tahun, $row->bulan),
@@ -68,7 +79,7 @@ class PublicReportController extends Controller
                 'tahun' => $row->tahun,
                 'bulan' => $row->bulan,
                 'frekuensi' => (int) $row->frekuensi,
-                'total_nominal' => (float) $row->total_nominal,
+                'total_nominal' => $nominal,
                 'akumulasi_kumulatif' => $runningTotal,
                 'persen_target' => $totalTarget > 0 ? round(($runningTotal / $totalTarget) * 100, 1) : 0,
             ];
@@ -79,13 +90,14 @@ class PublicReportController extends Controller
 
         // Rekapitulasi uang masuk harian (tetap disediakan jika warga ingin cek rincian harian)
         $uangMasukPerTanggal = KasMasuk::selectRaw('DATE(tanggal) as tgl, COUNT(*) as frekuensi, SUM(jumlah) as total_nominal')
+            ->where('tampil_publik', true)
             ->when($tahunDipilih !== null, fn ($q) => $q->whereYear('tanggal', $tahunDipilih))
             ->groupBy('tgl')
             ->orderBy('tgl', 'desc')
             ->take(30)
             ->get();
 
-        $monthlyData = $this->arusKasBulanan($tahunDipilih);
+        $monthlyData = $this->arusKasBulanan($tahunDipilih, $portalWarga);
 
         // Legalitas summary
         $legalitasStats = [
@@ -100,12 +112,14 @@ class PublicReportController extends Controller
 
         // Timeline kepengurusan berkas legalitas yang diinput oleh admin
         $timelines = TimelineLegalitas::with('legalitas.penghuni')
+            ->where('tampil_publik', true)
             ->orderBy('tanggal', 'desc')
             ->orderBy('created_at', 'desc')
             ->get();
 
         // Transparent list of expenditures (Kas Keluar)
         $daftarPengeluaran = KasKeluar::with('kategori')
+            ->where('tampil_publik', true)
             ->when($tahunDipilih !== null, fn ($q) => $q->whereYear('tanggal', $tahunDipilih))
             ->orderBy('tanggal', 'desc')
             ->take(12)
@@ -114,6 +128,7 @@ class PublicReportController extends Controller
         // Kas keluar per kategori
         $kasKeluarPerKategori = KasKeluar::selectRaw('kategori_kas_id, SUM(jumlah) as total')
             ->with('kategori')
+            ->where('tampil_publik', true)
             ->when($tahunDipilih !== null, fn ($q) => $q->whereYear('tanggal', $tahunDipilih))
             ->groupBy('kategori_kas_id')
             ->get()
@@ -138,7 +153,9 @@ class PublicReportController extends Controller
         $totalAdminLogs = ActivityLog::count();
 
         // Dokumen Kearsipan Perumahan yang bersifat Publik untuk Warga
-        $arsipPublik = \App\Models\ArsipDokumen::where('is_public', true)->orderBy('created_at', 'desc')->get();
+        $arsipPublik = $portal['kearsipan']
+            ? \App\Models\ArsipDokumen::where('is_public', true)->orderBy('created_at', 'desc')->get()
+            : collect();
 
         return view('public.report', compact(
             'perumahan',
@@ -153,11 +170,13 @@ class PublicReportController extends Controller
             'arsipPublik',
             'lastUpdated',
             'tahunDipilih',
-            'daftarTahun'
+            'daftarTahun',
+            'portal',
+            'tabAwal'
         ));
     }
 
-    public function timelinePage()
+    public function timelinePage(PortalWarga $portalWarga)
     {
         $perumahan = Perumahan::first() ?? new Perumahan([
             'nama_perumahan' => 'Griya Harmoni Residence',
@@ -166,6 +185,7 @@ class PublicReportController extends Controller
         ]);
 
         $timelines = TimelineLegalitas::with('legalitas.penghuni')
+            ->where('tampil_publik', true)
             ->orderBy('tanggal', 'desc')
             ->orderBy('created_at', 'desc')
             ->get();
@@ -175,22 +195,26 @@ class PublicReportController extends Controller
             TimelineLegalitas::max('updated_at') ?? date('Y-m-d H:i:s')
         );
         $lastUpdated = Carbon::parse($rawLast);
+        $tampilTimeline = $portalWarga->bagian('timeline');
+        if (!$tampilTimeline) {
+            $timelines = collect();
+        }
 
-        return view('public.timeline', compact('perumahan', 'timelines', 'lastUpdated'));
+        return view('public.timeline', compact('perumahan', 'timelines', 'lastUpdated', 'tampilTimeline'));
     }
 
-    public function apiData(Request $request)
+    public function apiData(Request $request, PortalWarga $portalWarga)
     {
         $tahunDipilih = $this->tahunDariRequest($request);
         $ringkasAngsuran = $this->ringkasanAngsuran($tahunDipilih);
 
-        $kasMasuk = KasMasuk::query();
-        $kasKeluar = KasKeluar::query();
+        $kasMasuk = KasMasuk::query()->where('tampil_publik', true);
+        $kasKeluar = KasKeluar::query()->where('tampil_publik', true);
         if ($tahunDipilih !== null) {
             $kasMasuk->whereYear('tanggal', $tahunDipilih);
             $kasKeluar->whereYear('tanggal', $tahunDipilih);
         }
-        $totalKasMasuk = (float) $kasMasuk->sum('jumlah');
+        $totalKasMasuk = $portalWarga->nominalMasuk((float) $kasMasuk->sum('jumlah'));
         $totalKasKeluar = (float) $kasKeluar->sum('jumlah');
         $saldoKas = $totalKasMasuk - $totalKasKeluar;
 
@@ -258,7 +282,7 @@ class PublicReportController extends Controller
         ];
     }
 
-    private function arusKasBulanan(?int $tahun): array
+    private function arusKasBulanan(?int $tahun, PortalWarga $portalWarga): array
     {
         $bulan = [];
         if ($tahun === null) {
@@ -273,10 +297,18 @@ class PublicReportController extends Controller
 
         $data = [];
         foreach ($bulan as $date) {
+            $masuk = (float) KasMasuk::where('tampil_publik', true)
+                ->whereYear('tanggal', $date->year)
+                ->whereMonth('tanggal', $date->month)
+                ->sum('jumlah');
+            $keluar = (float) KasKeluar::where('tampil_publik', true)
+                ->whereYear('tanggal', $date->year)
+                ->whereMonth('tanggal', $date->month)
+                ->sum('jumlah');
             $data[] = [
                 'bulan' => $date->translatedFormat($tahun === null ? 'M Y' : 'M'),
-                'masuk' => (float) KasMasuk::whereYear('tanggal', $date->year)->whereMonth('tanggal', $date->month)->sum('jumlah'),
-                'keluar' => (float) KasKeluar::whereYear('tanggal', $date->year)->whereMonth('tanggal', $date->month)->sum('jumlah'),
+                'masuk' => $portalWarga->nominalMasuk($masuk),
+                'keluar' => $keluar,
             ];
         }
 

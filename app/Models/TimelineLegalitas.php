@@ -21,11 +21,13 @@ class TimelineLegalitas extends Model
         'dokumen_file',
         'icon',
         'warna',
+        'tampil_publik',
         'created_by',
     ];
 
     protected $casts = [
         'tanggal' => 'date',
+        'tampil_publik' => 'boolean',
     ];
 
     public function legalitas()

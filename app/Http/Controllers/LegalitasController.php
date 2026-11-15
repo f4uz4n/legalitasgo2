@@ -142,6 +142,7 @@ class LegalitasController extends Controller
             'deskripsi' => 'nullable|string',
             'status' => 'required|in:pending,proses,selesai,ditolak',
             'dokumen_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120',
+            'tampil_publik' => 'nullable|boolean',
         ]);
 
         if ($request->hasFile('dokumen_file')) {
@@ -149,6 +150,7 @@ class LegalitasController extends Controller
         }
 
         $validated['legalitas_id'] = $legalita->id;
+        $validated['tampil_publik'] = $request->boolean('tampil_publik');
         $validated['created_by'] = auth()->id();
         $validated['icon'] = $this->getTimelineIcon($validated['status']);
         $validated['warna'] = $this->getTimelineColor($validated['status']);
@@ -168,11 +170,14 @@ class LegalitasController extends Controller
             'deskripsi' => 'nullable|string',
             'status' => 'required|in:pending,proses,selesai,ditolak',
             'dokumen_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120',
+            'tampil_publik' => 'nullable|boolean',
         ]);
 
         if ($request->hasFile('dokumen_file')) {
             $validated['dokumen_file'] = $request->file('dokumen_file')->store('dokumen-legalitas', 'public');
         }
+
+        $validated['tampil_publik'] = $request->boolean('tampil_publik');
 
         if (!empty($validated['legalitas_id']) && empty($validated['kavling_terkait'])) {
             $leg = Legalitas::with('penghuni')->find($validated['legalitas_id']);
@@ -188,6 +193,16 @@ class LegalitasController extends Controller
         TimelineLegalitas::create($validated);
 
         return redirect()->back()->with('success', 'Update tahapan berkas "' . $validated['judul'] . '" berhasil dicatat ke timeline publik.');
+    }
+
+    public function publikTimeline(TimelineLegalitas $timeline)
+    {
+        $timeline->tampil_publik = !$timeline->tampil_publik;
+        $timeline->save();
+
+        return redirect()->back()->with('success', $timeline->tampil_publik
+            ? 'Tahapan timeline ditampilkan di portal warga.'
+            : 'Tahapan timeline disembunyikan dari portal warga.');
     }
 
     public function destroy(Legalitas $legalita)

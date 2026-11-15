@@ -745,6 +745,9 @@
                     <i class="bi bi-person-plus-fill"></i> Akun Operator
                 </a>
                 @endif
+                <a href="{{ route('portal.pengaturan') }}" class="nav-link {{ request()->routeIs('portal.pengaturan') ? 'active' : '' }}">
+                    <i class="bi bi-sliders"></i> Tampilan Portal Warga
+                </a>
                 <a href="{{ route('perumahan.index') }}" class="nav-link {{ request()->routeIs('perumahan.*') ? 'active' : '' }}">
                     <i class="bi bi-gear-wide-connected"></i> Profil Perumahan
                 </a>

@@ -61,6 +61,7 @@ class KasController extends Controller
             'no_referensi' => 'nullable|string|max:255',
             'keterangan' => 'nullable|string',
             'bukti_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'tampil_publik' => 'nullable|boolean',
         ]);
 
         if ($request->hasFile('bukti_file')) {
@@ -68,6 +69,7 @@ class KasController extends Controller
         }
 
         $validated['created_by'] = auth()->id();
+        $validated['tampil_publik'] = $request->boolean('tampil_publik');
         KasMasuk::create($validated);
 
         return redirect()->route('kas.index')->with('success', 'Kas masuk berhasil ditambahkan.');
@@ -83,6 +85,7 @@ class KasController extends Controller
             'no_referensi' => 'nullable|string|max:255',
             'keterangan' => 'nullable|string',
             'bukti_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'tampil_publik' => 'nullable|boolean',
         ]);
 
         if ($request->hasFile('bukti_file')) {
@@ -90,6 +93,7 @@ class KasController extends Controller
         }
 
         $validated['created_by'] = auth()->id();
+        $validated['tampil_publik'] = $request->boolean('tampil_publik');
         KasKeluar::create($validated);
 
         return redirect()->route('kas.index')->with('success', 'Kas keluar berhasil ditambahkan.');
@@ -105,6 +109,26 @@ class KasController extends Controller
 
         KategoriKas::create($validated);
         return redirect()->route('kas.index')->with('success', 'Kategori kas berhasil ditambahkan.');
+    }
+
+    public function publikMasuk(KasMasuk $kasMasuk)
+    {
+        $kasMasuk->tampil_publik = !$kasMasuk->tampil_publik;
+        $kasMasuk->save();
+
+        return redirect()->back()->with('success', $kasMasuk->tampil_publik
+            ? 'Kas masuk ditampilkan di portal warga.'
+            : 'Kas masuk disembunyikan dari portal warga.');
+    }
+
+    public function publikKeluar(KasKeluar $kasKeluar)
+    {
+        $kasKeluar->tampil_publik = !$kasKeluar->tampil_publik;
+        $kasKeluar->save();
+
+        return redirect()->back()->with('success', $kasKeluar->tampil_publik
+            ? 'Kas keluar ditampilkan di portal warga.'
+            : 'Kas keluar disembunyikan dari portal warga.');
     }
 
     public function destroyMasuk(KasMasuk $kasMasuk)

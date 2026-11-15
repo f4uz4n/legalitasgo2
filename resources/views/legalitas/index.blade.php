@@ -136,6 +136,7 @@
                             <th>Status Tahap</th>
                             <th>Uraian / Deskripsi Milestone</th>
                             <th>Bukti File</th>
+                            <th>Portal</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -165,10 +166,18 @@
                                 <span class="text-muted small">-</span>
                                 @endif
                             </td>
+                            <td>
+                                <form action="{{ route('timeline.publik', $rt) }}" method="POST">
+                                    @csrf
+                                    <button class="btn btn-sm {{ $rt->tampil_publik ? 'btn-outline-primary' : 'btn-outline-secondary' }} rounded-3 py-0 px-2" title="{{ $rt->tampil_publik ? 'Tampil di portal warga' : 'Disembunyikan dari portal warga' }}">
+                                        <i class="bi bi-eye{{ $rt->tampil_publik ? '' : '-slash' }}"></i>
+                                    </button>
+                                </form>
+                            </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="6" class="text-center py-4 text-muted">Belum ada update timeline yang diinput.</td>
+                            <td colspan="7" class="text-center py-4 text-muted">Belum ada update timeline yang diinput.</td>
                         </tr>
                         @endforelse
                     </tbody>
@@ -235,6 +244,12 @@
                         <div class="col-12">
                             <label class="form-label fw-semibold">Upload Dokumen Bukti / Tanda Terima (Opsional, PDF/Gambar Max 5MB)</label>
                             <input type="file" name="dokumen_file" class="form-control">
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="tampil_publik" id="timeline_tampil_publik" value="1" checked>
+                                <label class="form-check-label fw-semibold" for="timeline_tampil_publik">Tampil di portal warga</label>
+                            </div>
                         </div>
                     </div>
                 </div>

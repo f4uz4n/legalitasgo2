@@ -71,6 +71,12 @@
                             <p class="text-muted small mb-1">{{ $t->deskripsi }}</p>
                             @endif
                             <span class="timeline-date"><i class="bi bi-calendar3 me-1"></i>{{ $t->tanggal->format('d M Y') }}</span>
+                            <form action="{{ route('timeline.publik', $t) }}" method="POST" class="d-inline ms-2">
+                                @csrf
+                                <button class="btn btn-sm {{ $t->tampil_publik ? 'btn-outline-primary' : 'btn-outline-secondary' }} rounded-3 py-0 px-2">
+                                    <i class="bi bi-eye{{ $t->tampil_publik ? '' : '-slash' }} me-1"></i>{{ $t->tampil_publik ? 'Publik' : 'Privat' }}
+                                </button>
+                            </form>
                             @if($t->dokumen_file)
                             <a href="{{ Storage::url($t->dokumen_file) }}" target="_blank" class="ms-2 small"><i class="bi bi-paperclip"></i> Dokumen</a>
                             @endif
@@ -124,6 +130,10 @@
                     <div class="mb-3">
                         <label class="form-label">Dokumen (Opsional)</label>
                         <input type="file" name="dokumen_file" class="form-control" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="tampil_publik" id="timeline_detail_publik" value="1" checked>
+                        <label class="form-check-label" for="timeline_detail_publik">Tampil di portal warga</label>
                     </div>
                 </div>
                 <div class="modal-footer border-0">

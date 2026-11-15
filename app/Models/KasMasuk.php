@@ -21,12 +21,14 @@ class KasMasuk extends Model
         'no_referensi',
         'keterangan',
         'bukti_file',
+        'tampil_publik',
         'created_by',
     ];
 
     protected $casts = [
         'tanggal' => 'date',
         'jumlah' => 'decimal:2',
+        'tampil_publik' => 'boolean',
     ];
 
     public function kategori()

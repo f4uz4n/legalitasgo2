@@ -711,6 +711,9 @@
                 <a href="{{ route('pembayaran.index') }}" class="nav-link {{ request()->routeIs('pembayaran.*') ? 'active' : '' }}">
                     <i class="bi bi-credit-card-2-front-fill"></i> Cicilan Angsuran
                 </a>
+                <a href="{{ route('kwitansi.index') }}" class="nav-link {{ request()->routeIs('kwitansi.*') ? 'active' : '' }}">
+                    <i class="bi bi-receipt-cutoff"></i> Pengambilan Kwitansi
+                </a>
                 <a href="{{ route('penghuni.index') }}" class="nav-link {{ request()->routeIs('penghuni.*') ? 'active' : '' }}">
                     <i class="bi bi-people-fill"></i> Rekap Pengangsur
                 </a>
@@ -723,6 +726,9 @@
                 <div class="nav-section">Sertifikat &amp; Dokumen</div>
                 <a href="{{ route('legalitas.index') }}" class="nav-link {{ request()->routeIs('legalitas.*') ? 'active' : '' }}">
                     <i class="bi bi-file-earmark-ruled-fill"></i> Legalitas Sertifikat
+                </a>
+                <a href="{{ route('pajak.simulasi') }}" class="nav-link {{ request()->routeIs('pajak.simulasi') ? 'active' : '' }}">
+                    <i class="bi bi-calculator"></i> Simulasi BPHTB
                 </a>
                 <a href="{{ route('arsip.index') }}" class="nav-link {{ request()->routeIs('arsip.*') ? 'active' : '' }}">
                     <i class="bi bi-archive-fill"></i> Kearsipan Dokumen

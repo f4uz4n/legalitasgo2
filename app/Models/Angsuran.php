@@ -42,6 +42,11 @@ class Angsuran extends Model
         return $this->hasOne(KasMasuk::class);
     }
 
+    public function pengambilanKwitansi()
+    {
+        return $this->hasOne(PengambilanKwitansi::class);
+    }
+
     public function getIsOverdueAttribute()
     {
         return $this->status === 'belum_bayar' && $this->tanggal_jatuh_tempo->isPast();

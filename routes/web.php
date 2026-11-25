@@ -14,6 +14,8 @@ use App\Http\Controllers\ArsipDokumenController;
 use App\Http\Controllers\ReportPdfController;
 use App\Http\Controllers\OperatorController;
 use App\Http\Controllers\PortalTampilanController;
+use App\Http\Controllers\PengambilanKwitansiController;
+use App\Http\Controllers\PajakSimulasiController;
 use Illuminate\Support\Facades\Route;
 
 // ─── Public routes (tanpa login) ───────────────────────────────────────────────
@@ -50,6 +52,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/pembayaran/create', [PembayaranController::class, 'create'])->name('pembayaran.create');
         Route::post('/pembayaran', [PembayaranController::class, 'store'])->name('pembayaran.store');
 
+        Route::get('/kwitansi/pengambilan', [PengambilanKwitansiController::class, 'index'])->name('kwitansi.index');
+        Route::post('/kwitansi/pengambilan', [PengambilanKwitansiController::class, 'store'])->name('kwitansi.store');
+        Route::delete('/kwitansi/pengambilan/{pengambilan}', [PengambilanKwitansiController::class, 'destroy'])->name('kwitansi.destroy');
+
         // Perumahan
         Route::resource('perumahan', PerumahanController::class);
 
@@ -73,6 +79,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/kas/keluar/{kasKeluar}', [KasController::class, 'destroyKeluar'])->name('kas.keluar.destroy');
 
         // Legalitas Management
+        Route::get('/simulasi/bphtb', [PajakSimulasiController::class, 'index'])->name('pajak.simulasi');
+        Route::post('/simulasi/bphtb', [PajakSimulasiController::class, 'store'])->name('pajak.simulasi.store');
+        Route::get('/simulasi/bphtb/{simulasi}/edit', [PajakSimulasiController::class, 'edit'])->name('pajak.simulasi.edit');
+        Route::put('/simulasi/bphtb/{simulasi}', [PajakSimulasiController::class, 'update'])->name('pajak.simulasi.update');
+        Route::delete('/simulasi/bphtb/{simulasi}', [PajakSimulasiController::class, 'destroy'])->name('pajak.simulasi.destroy');
         Route::get('/legalitas', [LegalitasController::class, 'index'])->name('legalitas.index');
         Route::get('/legalitas/create', [LegalitasController::class, 'create'])->name('legalitas.create');
         Route::post('/legalitas', [LegalitasController::class, 'store'])->name('legalitas.store');

@@ -12,9 +12,22 @@
             <a href="{{ route('pembayaran.index') }}" class="btn btn-outline-secondary rounded-3">
                 <i class="bi bi-arrow-left"></i> Kembali
             </a>
-            <button onclick="window.print()" class="btn btn-primary rounded-3">
-                <i class="bi bi-printer-fill"></i> Cetak Kwitansi
-            </button>
+            <div class="d-flex gap-2">
+                @if(auth()->user()->isAdmin() && (float) $angsuran->jumlah_bayar > 0)
+                    @if($angsuran->pengambilanKwitansi)
+                        <span class="btn btn-success rounded-3 disabled">
+                            <i class="bi bi-check2-circle"></i> Diambil {{ $angsuran->pengambilanKwitansi->tanggal_ambil->format('d/m/Y') }}
+                        </span>
+                    @else
+                        <a href="{{ route('kwitansi.index', ['angsuran' => $angsuran->id]) }}" class="btn btn-outline-success rounded-3">
+                            <i class="bi bi-box-arrow-up-right"></i> Catat Pengambilan
+                        </a>
+                    @endif
+                @endif
+                <button onclick="window.print()" class="btn btn-primary rounded-3">
+                    <i class="bi bi-printer-fill"></i> Cetak Kwitansi
+                </button>
+            </div>
         </div>
 
         <div class="content-card shadow-sm border p-4 p-md-5 bg-white rounded-4 print-area" id="kwitansiCard">

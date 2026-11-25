@@ -269,7 +269,7 @@ class PembayaranController extends Controller
             abort(403, 'Anda tidak memiliki hak akses untuk melihat rincian pembayaran ini.');
         }
 
-        $angsuran->load(['penghuni.perumahan', 'kasMasuk']);
+        $angsuran->load(['penghuni.perumahan', 'kasMasuk', 'pengambilanKwitansi']);
         return view('pembayaran.show', compact('angsuran'));
     }
 }

@@ -727,9 +727,11 @@
                 <a href="{{ route('legalitas.index') }}" class="nav-link {{ request()->routeIs('legalitas.*') ? 'active' : '' }}">
                     <i class="bi bi-file-earmark-ruled-fill"></i> Legalitas Sertifikat
                 </a>
+                @if(Auth::user()->isSuperAdmin())
                 <a href="{{ route('pajak.simulasi') }}" class="nav-link {{ request()->routeIs('pajak.simulasi') ? 'active' : '' }}">
                     <i class="bi bi-calculator"></i> Simulasi BPHTB
                 </a>
+                @endif
                 <a href="{{ route('arsip.index') }}" class="nav-link {{ request()->routeIs('arsip.*') ? 'active' : '' }}">
                     <i class="bi bi-archive-fill"></i> Kearsipan Dokumen
                     <span class="badge bg-light text-primary border ms-auto" style="font-size: 0.65rem;">ARSIP</span>

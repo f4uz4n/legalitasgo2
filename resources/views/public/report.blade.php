@@ -765,7 +765,7 @@
                                     </td>
                                     <td class="text-center">
                                         @if($dp->bukti_file)
-                                        <a href="{{ Storage::url($dp->bukti_file) }}" target="_blank" class="btn btn-sm btn-outline-danger rounded-3 py-0 px-2" style="font-size: 0.75rem;" title="Lihat Bukti Transaksi">
+                                        <a href="{{ Storage::disk('public')->url($dp->bukti_file) }}" target="_blank" class="btn btn-sm btn-outline-danger rounded-3 py-0 px-2" style="font-size: 0.75rem;" title="Lihat Bukti Transaksi">
                                             <i class="bi bi-paperclip"></i> Bukti Kuitansi
                                         </a>
                                         @else

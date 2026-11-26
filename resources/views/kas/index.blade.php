@@ -91,14 +91,31 @@
                                 <td class="fw-semibold text-success">+{{ number_format($km->jumlah, 0, ',', '.') }}</td>
                                 <td>
                                     @if($km->bukti_file)
-                                    <a href="{{ Storage::url($km->bukti_file) }}" target="_blank" class="btn btn-sm btn-outline-success rounded-3 py-0 px-2" style="font-size:0.75rem;" title="Lihat Bukti">
+                                    @php $extMasuk = strtolower(pathinfo($km->bukti_file, PATHINFO_EXTENSION)); @endphp
+                                    <a href="{{ route('kas.masuk.bukti', $km) }}" target="_blank" class="btn btn-sm btn-outline-success rounded-3 py-0 px-2" style="font-size:0.75rem;" title="Lihat Bukti">
+                                        @if(in_array($extMasuk, ['jpg', 'jpeg', 'png']))
+                                        <img src="{{ route('kas.masuk.bukti', $km) }}" alt="Bukti" style="width:36px;height:36px;object-fit:cover;border-radius:6px">
+                                        @else
                                         <i class="bi bi-paperclip"></i> Bukti
+                                        @endif
                                     </a>
                                     @else
                                     <span class="text-muted small">-</span>
                                     @endif
                                 </td>
                                 <td class="text-nowrap">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 btn-edit-masuk" style="padding:2px 6px" title="Ubah"
+                                        data-bs-toggle="modal" data-bs-target="#modalEditMasuk"
+                                        data-action="{{ route('kas.masuk.update', $km) }}"
+                                        data-kategori="{{ $km->kategori_kas_id }}"
+                                        data-tanggal="{{ $km->tanggal->format('Y-m-d') }}"
+                                        data-jumlah="{{ (int) $km->jumlah }}"
+                                        data-metode="{{ $km->metode_bayar }}"
+                                        data-keterangan="{{ e(preg_replace('/\s+/', ' ', (string) $km->keterangan)) }}"
+                                        data-publik="{{ $km->tampil_publik ? '1' : '0' }}"
+                                        data-bukti="{{ $km->bukti_file ? route('kas.masuk.bukti', $km) : '' }}">
+                                        <i class="bi bi-pencil" style="font-size:0.7rem"></i>
+                                    </button>
                                     <form action="{{ route('kas.masuk.publik', $km) }}" method="POST" class="d-inline">
                                         @csrf
                                         <button class="btn btn-sm {{ $km->tampil_publik ? 'btn-outline-primary' : 'btn-outline-secondary' }} rounded-3" style="padding:2px 6px" title="{{ $km->tampil_publik ? 'Tampil di portal warga' : 'Disembunyikan dari portal warga' }}">
@@ -150,14 +167,31 @@
                                 <td class="fw-semibold text-danger">-{{ number_format($kk->jumlah, 0, ',', '.') }}</td>
                                 <td>
                                     @if($kk->bukti_file)
-                                    <a href="{{ Storage::url($kk->bukti_file) }}" target="_blank" class="btn btn-sm btn-outline-danger rounded-3 py-0 px-2" style="font-size:0.75rem;" title="Lihat Bukti Pengeluaran">
+                                    @php $extKeluar = strtolower(pathinfo($kk->bukti_file, PATHINFO_EXTENSION)); @endphp
+                                    <a href="{{ route('kas.keluar.bukti', $kk) }}" target="_blank" class="btn btn-sm btn-outline-danger rounded-3 py-0 px-2" style="font-size:0.75rem;" title="Lihat Bukti Pengeluaran">
+                                        @if(in_array($extKeluar, ['jpg', 'jpeg', 'png']))
+                                        <img src="{{ route('kas.keluar.bukti', $kk) }}" alt="Bukti" style="width:36px;height:36px;object-fit:cover;border-radius:6px">
+                                        @else
                                         <i class="bi bi-paperclip"></i> Bukti
+                                        @endif
                                     </a>
                                     @else
                                     <span class="text-muted small">-</span>
                                     @endif
                                 </td>
                                 <td class="text-nowrap">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 btn-edit-keluar" style="padding:2px 6px" title="Ubah"
+                                        data-bs-toggle="modal" data-bs-target="#modalEditKeluar"
+                                        data-action="{{ route('kas.keluar.update', $kk) }}"
+                                        data-kategori="{{ $kk->kategori_kas_id }}"
+                                        data-tanggal="{{ $kk->tanggal->format('Y-m-d') }}"
+                                        data-jumlah="{{ (int) $kk->jumlah }}"
+                                        data-penerima="{{ $kk->penerima }}"
+                                        data-keterangan="{{ e(preg_replace('/\s+/', ' ', (string) $kk->keterangan)) }}"
+                                        data-publik="{{ $kk->tampil_publik ? '1' : '0' }}"
+                                        data-bukti="{{ $kk->bukti_file ? route('kas.keluar.bukti', $kk) : '' }}">
+                                        <i class="bi bi-pencil" style="font-size:0.7rem"></i>
+                                    </button>
                                     <form action="{{ route('kas.keluar.publik', $kk) }}" method="POST" class="d-inline">
                                         @csrf
                                         <button class="btn btn-sm {{ $kk->tampil_publik ? 'btn-outline-primary' : 'btn-outline-secondary' }} rounded-3" style="padding:2px 6px" title="{{ $kk->tampil_publik ? 'Tampil di portal warga' : 'Disembunyikan dari portal warga' }}">
@@ -299,6 +333,128 @@
     </div>
 </div>
 
+<!-- Modal Ubah Kas Masuk -->
+<div class="modal fade" id="modalEditMasuk" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius:16px;border:none">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-pencil text-success me-2"></i>Ubah Kas Masuk</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formEditMasuk" method="POST" enctype="multipart/form-data">
+                @csrf
+                @method('PUT')
+                <input type="hidden" name="bulan" value="{{ $bulan }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Kategori <span class="text-danger">*</span></label>
+                        <select name="kategori_kas_id" class="form-select" required>
+                            @foreach($kategoriMasuk as $k)
+                            <option value="{{ $k->id }}">{{ $k->nama_kategori }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tanggal <span class="text-danger">*</span></label>
+                            <input type="date" name="tanggal" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Jumlah <span class="text-danger">*</span></label>
+                            <input type="number" name="jumlah" class="form-control" min="0" step="1" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Metode Bayar</label>
+                        <select name="metode_bayar" class="form-select">
+                            <option>Transfer Bank</option>
+                            <option>Tunai</option>
+                            <option>QRIS</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Bukti Transaksi</label>
+                        <div id="bukti-masuk-saat-ini" class="small mb-2 text-muted">Belum ada bukti.</div>
+                        <input type="file" name="bukti_file" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
+                        <small class="text-muted">Kosongkan jika bukti yang ada tetap dipakai. JPG, PNG, atau PDF, maksimal 5 MB.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Keterangan</label>
+                        <textarea name="keterangan" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="tampil_publik" id="edit_masuk_tampil_publik" value="1">
+                        <label class="form-check-label" for="edit_masuk_tampil_publik">Tampil di portal warga</label>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success"><i class="bi bi-check-lg me-1"></i> Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Ubah Kas Keluar -->
+<div class="modal fade" id="modalEditKeluar" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius:16px;border:none">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-pencil text-danger me-2"></i>Ubah Kas Keluar</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formEditKeluar" method="POST" enctype="multipart/form-data">
+                @csrf
+                @method('PUT')
+                <input type="hidden" name="bulan" value="{{ $bulan }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Kategori <span class="text-danger">*</span></label>
+                        <select name="kategori_kas_id" class="form-select" required>
+                            @foreach($kategoriKeluar as $k)
+                            <option value="{{ $k->id }}">{{ $k->nama_kategori }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tanggal <span class="text-danger">*</span></label>
+                            <input type="date" name="tanggal" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Jumlah <span class="text-danger">*</span></label>
+                            <input type="number" name="jumlah" class="form-control" min="0" step="1" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Penerima</label>
+                        <input type="text" name="penerima" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Bukti Pengeluaran</label>
+                        <div id="bukti-keluar-saat-ini" class="small mb-2 text-muted">Belum ada bukti.</div>
+                        <input type="file" name="bukti_file" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
+                        <small class="text-muted">Kosongkan jika bukti yang ada tetap dipakai. JPG, PNG, atau PDF, maksimal 5 MB.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Keterangan</label>
+                        <textarea name="keterangan" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="tampil_publik" id="edit_keluar_tampil_publik" value="1">
+                        <label class="form-check-label" for="edit_keluar_tampil_publik">Tampil di portal warga</label>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-danger"><i class="bi bi-check-lg me-1"></i> Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Modal Kategori -->
 <div class="modal fade" id="modalKategori" tabindex="-1">
     <div class="modal-dialog">
@@ -335,3 +491,54 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+function pratinjauBukti(tautan) {
+    if (!tautan) {
+        return 'Belum ada bukti.';
+    }
+    if (/\.pdf($|\?)/i.test(tautan)) {
+        return '<a href="' + tautan + '" target="_blank">Lihat bukti saat ini</a>';
+    }
+    return '<a href="' + tautan + '" target="_blank"><img src="' + tautan + '" alt="Bukti" style="max-height:140px;border-radius:8px"></a>';
+}
+
+document.querySelectorAll('.btn-edit-masuk').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        const form = document.getElementById('formEditMasuk');
+        form.action = btn.dataset.action;
+        form.querySelector('[name=kategori_kas_id]').value = btn.dataset.kategori;
+        form.querySelector('[name=tanggal]').value = btn.dataset.tanggal;
+        form.querySelector('[name=jumlah]').value = btn.dataset.jumlah;
+        const metode = form.querySelector('[name=metode_bayar]');
+        const nilaiMetode = btn.dataset.metode || 'Transfer Bank';
+        if (![...metode.options].some(function (opt) { return opt.value === nilaiMetode; })) {
+            metode.add(new Option(nilaiMetode, nilaiMetode));
+        }
+        metode.value = nilaiMetode;
+        form.querySelector('[name=keterangan]').value = btn.dataset.keterangan || '';
+        form.querySelector('[name=tampil_publik]').checked = btn.dataset.publik === '1';
+        form.querySelector('[name=bukti_file]').value = '';
+        const info = document.getElementById('bukti-masuk-saat-ini');
+        info.innerHTML = pratinjauBukti(btn.dataset.bukti);
+    });
+});
+
+document.querySelectorAll('.btn-edit-keluar').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        const form = document.getElementById('formEditKeluar');
+        form.action = btn.dataset.action;
+        form.querySelector('[name=kategori_kas_id]').value = btn.dataset.kategori;
+        form.querySelector('[name=tanggal]').value = btn.dataset.tanggal;
+        form.querySelector('[name=jumlah]').value = btn.dataset.jumlah;
+        form.querySelector('[name=penerima]').value = btn.dataset.penerima || '';
+        form.querySelector('[name=keterangan]').value = btn.dataset.keterangan || '';
+        form.querySelector('[name=tampil_publik]').checked = btn.dataset.publik === '1';
+        form.querySelector('[name=bukti_file]').value = '';
+        const info = document.getElementById('bukti-keluar-saat-ini');
+        info.innerHTML = pratinjauBukti(btn.dataset.bukti);
+    });
+});
+</script>
+@endpush

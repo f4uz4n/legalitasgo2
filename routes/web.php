@@ -73,9 +73,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/kas/masuk', [KasController::class, 'storeMasuk'])->name('kas.masuk.store');
         Route::post('/kas/keluar', [KasController::class, 'storeKeluar'])->name('kas.keluar.store');
         Route::post('/kas/kategori', [KasController::class, 'storeKategori'])->name('kas.kategori.store');
+        Route::get('/kas/masuk/{kasMasuk}/bukti', [KasController::class, 'buktiMasuk'])->name('kas.masuk.bukti');
+        Route::put('/kas/masuk/{kasMasuk}', [KasController::class, 'updateMasuk'])->name('kas.masuk.update');
         Route::post('/kas/masuk/{kasMasuk}/publik', [KasController::class, 'publikMasuk'])->name('kas.masuk.publik');
-        Route::post('/kas/keluar/{kasKeluar}/publik', [KasController::class, 'publikKeluar'])->name('kas.keluar.publik');
         Route::delete('/kas/masuk/{kasMasuk}', [KasController::class, 'destroyMasuk'])->name('kas.masuk.destroy');
+        Route::get('/kas/keluar/{kasKeluar}/bukti', [KasController::class, 'buktiKeluar'])->name('kas.keluar.bukti');
+        Route::put('/kas/keluar/{kasKeluar}', [KasController::class, 'updateKeluar'])->name('kas.keluar.update');
+        Route::post('/kas/keluar/{kasKeluar}/publik', [KasController::class, 'publikKeluar'])->name('kas.keluar.publik');
         Route::delete('/kas/keluar/{kasKeluar}', [KasController::class, 'destroyKeluar'])->name('kas.keluar.destroy');
 
         // Legalitas Management

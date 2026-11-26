@@ -5,9 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\KasMasuk;
 use App\Models\KasKeluar;
 use App\Models\KategoriKas;
-use App\Models\Penghuni;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class KasController extends Controller
 {
@@ -72,7 +72,23 @@ class KasController extends Controller
         $validated['tampil_publik'] = $request->boolean('tampil_publik');
         KasMasuk::create($validated);
 
-        return redirect()->route('kas.index')->with('success', 'Kas masuk berhasil ditambahkan.');
+        return redirect()->route('kas.index', ['bulan' => Carbon::parse($validated['tanggal'])->format('Y-m')])->with('success', 'Kas masuk berhasil ditambahkan.');
+    }
+
+    public function updateMasuk(Request $request, KasMasuk $kasMasuk)
+    {
+        $validated = $this->validasiMasuk($request);
+        $validated['tampil_publik'] = $request->boolean('tampil_publik');
+        $validated['bukti_file'] = $this->simpanBukti($request, $kasMasuk->bukti_file);
+        $kasMasuk->update($validated);
+
+        return redirect()->route('kas.index', ['bulan' => $request->input('bulan', Carbon::parse($validated['tanggal'])->format('Y-m'))])
+            ->with('success', 'Kas masuk berhasil diperbarui.');
+    }
+
+    public function buktiMasuk(KasMasuk $kasMasuk)
+    {
+        return $this->tampilkanBukti($kasMasuk->bukti_file);
     }
 
     public function storeKeluar(Request $request)
@@ -96,7 +112,23 @@ class KasController extends Controller
         $validated['tampil_publik'] = $request->boolean('tampil_publik');
         KasKeluar::create($validated);
 
-        return redirect()->route('kas.index')->with('success', 'Kas keluar berhasil ditambahkan.');
+        return redirect()->route('kas.index', ['bulan' => Carbon::parse($validated['tanggal'])->format('Y-m')])->with('success', 'Kas keluar berhasil ditambahkan.');
+    }
+
+    public function updateKeluar(Request $request, KasKeluar $kasKeluar)
+    {
+        $validated = $this->validasiKeluar($request);
+        $validated['tampil_publik'] = $request->boolean('tampil_publik');
+        $validated['bukti_file'] = $this->simpanBukti($request, $kasKeluar->bukti_file);
+        $kasKeluar->update($validated);
+
+        return redirect()->route('kas.index', ['bulan' => $request->input('bulan', Carbon::parse($validated['tanggal'])->format('Y-m'))])
+            ->with('success', 'Kas keluar berhasil diperbarui.');
+    }
+
+    public function buktiKeluar(KasKeluar $kasKeluar)
+    {
+        return $this->tampilkanBukti($kasKeluar->bukti_file);
     }
 
     public function storeKategori(Request $request)
@@ -133,13 +165,67 @@ class KasController extends Controller
 
     public function destroyMasuk(KasMasuk $kasMasuk)
     {
+        $this->hapusBuktiSendiri($kasMasuk->bukti_file);
         $kasMasuk->delete();
         return redirect()->route('kas.index')->with('success', 'Kas masuk berhasil dihapus.');
     }
 
     public function destroyKeluar(KasKeluar $kasKeluar)
     {
+        $this->hapusBuktiSendiri($kasKeluar->bukti_file);
         $kasKeluar->delete();
         return redirect()->route('kas.index')->with('success', 'Kas keluar berhasil dihapus.');
+    }
+
+    private function validasiMasuk(Request $request): array
+    {
+        return $request->validate([
+            'kategori_kas_id' => 'required|exists:kategori_kas,id',
+            'penghuni_id' => 'nullable|exists:penghuni,id',
+            'tanggal' => 'required|date',
+            'jumlah' => 'required|numeric|min:0',
+            'metode_bayar' => 'nullable|string|max:255',
+            'no_referensi' => 'nullable|string|max:255',
+            'keterangan' => 'nullable|string',
+            'bukti_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+        ]);
+    }
+
+    private function validasiKeluar(Request $request): array
+    {
+        return $request->validate([
+            'kategori_kas_id' => 'required|exists:kategori_kas,id',
+            'tanggal' => 'required|date',
+            'jumlah' => 'required|numeric|min:0',
+            'penerima' => 'nullable|string|max:255',
+            'no_referensi' => 'nullable|string|max:255',
+            'keterangan' => 'nullable|string',
+            'bukti_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+        ]);
+    }
+
+    private function simpanBukti(Request $request, ?string $lama): ?string
+    {
+        if (!$request->hasFile('bukti_file')) {
+            return $lama;
+        }
+
+        $this->hapusBuktiSendiri($lama);
+
+        return $request->file('bukti_file')->store('bukti-kas', 'public');
+    }
+
+    private function hapusBuktiSendiri(?string $path): void
+    {
+        if ($path && str_starts_with($path, 'bukti-kas/') && Storage::disk('public')->exists($path)) {
+            Storage::disk('public')->delete($path);
+        }
+    }
+
+    private function tampilkanBukti(?string $path)
+    {
+        abort_unless($path && Storage::disk('public')->exists($path), 404);
+
+        return Storage::disk('public')->response($path);
     }
 }

@@ -749,6 +749,9 @@
 
                 <div class="nav-section">Pengaturan &amp; Sistem</div>
                 @if(Auth::user()->isSuperAdmin())
+                <a href="{{ route('pengguna.online') }}" class="nav-link {{ request()->routeIs('pengguna.online') ? 'active' : '' }}">
+                    <i class="bi bi-person-check-fill"></i> Pengguna Online
+                </a>
                 <a href="{{ route('operator.index') }}" class="nav-link {{ request()->routeIs('operator.*') ? 'active' : '' }}">
                     <i class="bi bi-person-plus-fill"></i> Akun Operator
                 </a>

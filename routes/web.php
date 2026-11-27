@@ -13,6 +13,7 @@ use App\Http\Controllers\SystemController;
 use App\Http\Controllers\ArsipDokumenController;
 use App\Http\Controllers\ReportPdfController;
 use App\Http\Controllers\OperatorController;
+use App\Http\Controllers\PenggunaOnlineController;
 use App\Http\Controllers\PortalTampilanController;
 use App\Http\Controllers\PengambilanKwitansiController;
 use App\Http\Controllers\PajakSimulasiController;
@@ -121,6 +122,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/sistem/backup/{filename}', [SystemController::class, 'downloadBackup'])->name('system.backup.download');
 
         Route::middleware('superadmin')->group(function () {
+            Route::get('/pengguna-online', [PenggunaOnlineController::class, 'index'])->name('pengguna.online');
             Route::get('/operator', [OperatorController::class, 'index'])->name('operator.index');
             Route::post('/operator', [OperatorController::class, 'store'])->name('operator.store');
             Route::put('/operator/{user}', [OperatorController::class, 'update'])->name('operator.update');

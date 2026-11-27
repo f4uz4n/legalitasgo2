@@ -64,7 +64,7 @@
                 <span class="fw-bold text-dark">{{ $tahunDipilih ? $tahunDipilih : 'Semua tahun' }}</span>
             </div>
             <div class="text-secondary small mt-1">
-                <i class="bi bi-info-circle text-muted me-1"></i> Angsuran yang sudah dicatat, tidak termasuk DP
+                <i class="bi bi-info-circle text-muted me-1"></i> Kas masuk, pembayaran angsuran, dan kas keluar pada periode ini. Uang muka tidak dihitung.
             </div>
         </div>
     </div>
@@ -145,7 +145,7 @@
         <div class="card-custom p-4 bg-white h-100">
             <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
                 <div>
-                    <h6 class="fw-bold mb-0 text-dark">Arus Kas Bulanan (Penerimaan Cicilan vs Pengeluaran)</h6>
+                    <h6 class="fw-bold mb-0 text-dark">Arus Kas Bulanan (Uang Masuk vs Uang Keluar)</h6>
                     <small class="text-muted">{{ $tahunDipilih ? 'Januari–Desember ' . $tahunDipilih : '12 bulan terakhir' }}</small>
                 </div>
                 <span class="badge bg-light text-primary border px-3 py-2">
@@ -249,8 +249,100 @@
         </div>
     </div>
 
-    <!-- Tabel 2: Catatan Pengeluaran Kas Terbaru (Penggunaan Dana Transparan) -->
     <div class="col-lg-5">
+        <div class="card-custom bg-white mb-4">
+            <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="icon-green p-1 rounded-2 d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
+                        <i class="bi bi-journal-check"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-0 text-dark">Riwayat Pembayaran Angsuran</h6>
+                        <small class="text-muted">Pembayaran cicilan yang sudah dicatat pada periode ini</small>
+                    </div>
+                </div>
+                <a href="{{ route('pembayaran.index', ['periode' => 'all', 'status' => 'lunas']) }}" class="btn btn-sm btn-outline-success">Lihat Semua</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-custom mb-0">
+                    <thead>
+                        <tr>
+                            <th>Tanggal</th>
+                            <th>Pengangsur</th>
+                            <th class="text-end">Jumlah</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($riwayatAngsuran as $bayar)
+                        <tr>
+                            <td class="text-muted small">{{ $bayar->tanggal_bayar->format('d/m/Y') }}</td>
+                            <td>
+                                <div class="fw-semibold text-dark small text-truncate" style="max-width: 170px;">
+                                    {{ $bayar->penghuni->nama_lengkap ?? 'Pengangsur' }}
+                                </div>
+                                <span class="badge bg-light text-secondary border" style="font-size: 0.65rem;">
+                                    {{ $bayar->penghuni->blok_kavling ?? '-' }} · ke-{{ $bayar->angsuran_ke }}
+                                </span>
+                            </td>
+                            <td class="text-end fw-bold text-success">+ Rp {{ number_format($bayar->jumlah_bayar, 0, ',', '.') }}</td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="3" class="text-center py-4 text-muted">Belum ada pembayaran angsuran pada periode ini.</td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card-custom bg-white mb-4">
+            <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="icon-blue p-1 rounded-2 d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
+                        <i class="bi bi-arrow-down-circle"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-0 text-dark">Kas Masuk Terbaru</h6>
+                        <small class="text-muted">Termasuk angsuran dan pemasukan lain pada periode ini</small>
+                    </div>
+                </div>
+                <a href="{{ route('kas.index') }}" class="btn btn-sm btn-outline-primary">Kelola Kas</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-custom mb-0">
+                    <thead>
+                        <tr>
+                            <th>Tanggal</th>
+                            <th>Keterangan</th>
+                            <th class="text-end">Jumlah</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($recentKasMasuk as $rkm)
+                        <tr>
+                            <td class="text-muted small">{{ $rkm->tanggal->format('d/m/Y') }}</td>
+                            <td>
+                                <div class="fw-semibold text-dark small text-truncate" style="max-width: 170px;" title="{{ $rkm->keterangan }}">
+                                    {{ $rkm->keterangan ?: ($rkm->kategori->nama_kategori ?? 'Kas masuk') }}
+                                </div>
+                                <span class="badge bg-light text-secondary border" style="font-size: 0.65rem;">
+                                    {{ $rkm->kategori->nama_kategori ?? 'Umum' }}
+                                </span>
+                            </td>
+                            <td class="text-end fw-bold text-success">+ Rp {{ number_format($rkm->jumlah, 0, ',', '.') }}</td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="3" class="text-center py-4 text-muted">Belum ada kas masuk pada periode ini.</td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    <!-- Tabel 2: Catatan Pengeluaran Kas Terbaru (Penggunaan Dana Transparan) -->
         <div class="card-custom bg-white">
             <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center gap-2">
@@ -439,7 +531,7 @@
                 labels: labels,
                 datasets: [
                     {
-                        label: 'Penerimaan Cicilan (Kas Masuk)',
+                        label: 'Uang Masuk',
                         data: masukData,
                         backgroundColor: '#1d4ed8',
                         borderRadius: 6,

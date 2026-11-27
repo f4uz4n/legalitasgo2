@@ -528,7 +528,9 @@
                             <thead>
                                 <tr>
                                     <th>Periode Bulan</th>
-                                    <th class="text-center">Banyak Pembayaran</th>
+                                    <th class="text-center">Total Pengangsur</th>
+                                    <th class="text-center">Sudah Membayar</th>
+                                    <th class="text-center">Belum Membayar</th>
                                     <th class="text-end">Uang Masuk Bulan Tersebut</th>
                                     <th class="text-end">Akumulasi Kumulatif (In)</th>
                                     <th class="text-center" style="width: 175px;">Capaian Target Collecting</th>
@@ -549,11 +551,9 @@
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="text-center">
-                                        <span class="badge bg-light text-primary border border-primary border-opacity-25 px-3 py-2 fw-bold">
-                                            <i class="bi bi-cash-stack me-1"></i> {{ $mb['frekuensi'] }} Transaksi Masuk
-                                        </span>
-                                    </td>
+                                    <td class="text-center fw-bold">{{ number_format($mb['pengangsur_total'], 0, ',', '.') }}</td>
+                                    <td class="text-center fw-bold text-success">{{ number_format($mb['pengangsur_bayar'], 0, ',', '.') }}</td>
+                                    <td class="text-center fw-bold text-warning">{{ number_format($mb['pengangsur_belum'], 0, ',', '.') }}</td>
                                     <td class="text-end">
                                         <span class="fw-bold text-success fs-6">
                                             + Rp {{ number_format($mb['total_nominal'], 0, ',', '.') }}
@@ -584,7 +584,7 @@
                                 </tr>
                                 @empty
                                 <tr>
-                                    <td colspan="6" class="text-center py-5 text-muted">Belum ada catatan uang masuk bulanan.</td>
+                                    <td colspan="8" class="text-center py-5 text-muted">Belum ada catatan uang masuk bulanan.</td>
                                 </tr>
                                 @endforelse
                             </tbody>

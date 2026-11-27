@@ -54,34 +54,60 @@ class PublicReportController extends Controller
             $kasMasuk->whereYear('tanggal', $tahunDipilih);
             $kasKeluar->whereYear('tanggal', $tahunDipilih);
         }
-        $totalKasMasuk = $portalWarga->nominalMasuk((float) (clone $kasMasuk)->sum('jumlah'));
+        $angsuranDiLuarKas = $this->angsuranDiLuarKas($tahunDipilih)->sum('jumlah_bayar');
+        $totalKasMasuk = $portalWarga->nominalMasuk((float) (clone $kasMasuk)->sum('jumlah') + (float) $angsuranDiLuarKas);
         $totalKasKeluar = (float) (clone $kasKeluar)->sum('jumlah');
         $saldoKas = $totalKasMasuk - $totalKasKeluar;
 
-        // Uang masuk by bulan secara akumulasi kumulatif (running total)
-        $pemasukanBulanan = KasMasuk::selectRaw("YEAR(tanggal) as tahun, MONTH(tanggal) as bulan, COUNT(*) as frekuensi, SUM(jumlah) as total_nominal")
+        // Uang masuk by bulan: kas masuk dan pembayaran angsuran yang belum punya baris kas.
+        $kasPerBulan = KasMasuk::query()
             ->where('tampil_publik', true)
             ->when($tahunDipilih !== null, fn ($q) => $q->whereYear('tanggal', $tahunDipilih))
+            ->selectRaw('YEAR(tanggal) as tahun, MONTH(tanggal) as bulan, SUM(jumlah) as total')
             ->groupBy('tahun', 'bulan')
-            ->orderBy('tahun', 'asc')
-            ->orderBy('bulan', 'asc');
-        $monthlyIncomeRaw = $pemasukanBulanan->get();
+            ->get()
+            ->keyBy(fn ($baris) => sprintf('%04d-%02d', $baris->tahun, $baris->bulan));
+        $angsuranPerBulan = $this->angsuranDiLuarKas($tahunDipilih)
+            ->selectRaw('YEAR(tanggal_bayar) as tahun, MONTH(tanggal_bayar) as bulan, SUM(jumlah_bayar) as total')
+            ->groupBy('tahun', 'bulan')
+            ->get()
+            ->keyBy(fn ($baris) => sprintf('%04d-%02d', $baris->tahun, $baris->bulan));
+        $bayarPerBulan = Angsuran::query()
+            ->where('jumlah_bayar', '>', 0)
+            ->whereNotNull('tanggal_bayar')
+            ->when($tahunDipilih !== null, fn ($q) => $q->whereYear('tanggal_bayar', $tahunDipilih))
+            ->selectRaw('YEAR(tanggal_bayar) as tahun, MONTH(tanggal_bayar) as bulan, COUNT(*) as jumlah')
+            ->groupBy('tahun', 'bulan')
+            ->get()
+            ->keyBy(fn ($baris) => sprintf('%04d-%02d', $baris->tahun, $baris->bulan));
 
+        $totalPengangsur = Penghuni::count();
+        $kunciBulan = $kasPerBulan->keys()
+            ->merge($angsuranPerBulan->keys())
+            ->merge($bayarPerBulan->keys())
+            ->unique()
+            ->sort()
+            ->values();
         $runningTotal = 0;
         $uangMasukByBulan = [];
-        foreach ($monthlyIncomeRaw as $row) {
-            $nominal = $portalWarga->nominalMasuk((float) $row->total_nominal);
+        foreach ($kunciBulan as $kunci) {
+            $nominalAsli = (float) ($kasPerBulan[$kunci]->total ?? 0) + (float) ($angsuranPerBulan[$kunci]->total ?? 0);
+            $nominal = $portalWarga->nominalMasuk($nominalAsli);
             $runningTotal += $nominal;
-            $carbon = Carbon::createFromDate($row->tahun, $row->bulan, 1);
+            [$tahunBaris, $bulanBaris] = array_map('intval', explode('-', $kunci));
+            $carbon = Carbon::createFromDate($tahunBaris, $bulanBaris, 1);
+            $sudahBayar = (int) ($bayarPerBulan[$kunci]->jumlah ?? 0);
             $uangMasukByBulan[] = [
-                'periode_key' => sprintf('%04d-%02d', $row->tahun, $row->bulan),
+                'periode_key' => $kunci,
                 'bulan_nama' => $carbon->translatedFormat('F Y'),
-                'tahun' => $row->tahun,
-                'bulan' => $row->bulan,
-                'frekuensi' => (int) $row->frekuensi,
+                'tahun' => $tahunBaris,
+                'bulan' => $bulanBaris,
                 'total_nominal' => $nominal,
                 'akumulasi_kumulatif' => $runningTotal,
                 'persen_target' => $totalTarget > 0 ? round(($runningTotal / $totalTarget) * 100, 1) : 0,
+                'pengangsur_total' => $totalPengangsur,
+                'pengangsur_bayar' => $sudahBayar,
+                'pengangsur_belum' => max(0, $totalPengangsur - $sudahBayar),
             ];
         }
 
@@ -214,7 +240,8 @@ class PublicReportController extends Controller
             $kasMasuk->whereYear('tanggal', $tahunDipilih);
             $kasKeluar->whereYear('tanggal', $tahunDipilih);
         }
-        $totalKasMasuk = $portalWarga->nominalMasuk((float) $kasMasuk->sum('jumlah'));
+        $angsuranDiLuarKas = (float) $this->angsuranDiLuarKas($tahunDipilih)->sum('jumlah_bayar');
+        $totalKasMasuk = $portalWarga->nominalMasuk((float) $kasMasuk->sum('jumlah') + $angsuranDiLuarKas);
         $totalKasKeluar = (float) $kasKeluar->sum('jumlah');
         $saldoKas = $totalKasMasuk - $totalKasKeluar;
 
@@ -295,23 +322,46 @@ class PublicReportController extends Controller
             }
         }
 
+        $kasMasuk = KasMasuk::query()
+            ->where('tampil_publik', true)
+            ->when($tahun !== null, fn ($q) => $q->whereYear('tanggal', $tahun))
+            ->selectRaw('YEAR(tanggal) as tahun, MONTH(tanggal) as bulan, SUM(jumlah) as total')
+            ->groupBy('tahun', 'bulan')
+            ->get()
+            ->keyBy(fn ($baris) => sprintf('%04d-%02d', $baris->tahun, $baris->bulan));
+        $angsuranMasuk = $this->angsuranDiLuarKas($tahun)
+            ->selectRaw('YEAR(tanggal_bayar) as tahun, MONTH(tanggal_bayar) as bulan, SUM(jumlah_bayar) as total')
+            ->groupBy('tahun', 'bulan')
+            ->get()
+            ->keyBy(fn ($baris) => sprintf('%04d-%02d', $baris->tahun, $baris->bulan));
+        $kasKeluar = KasKeluar::query()
+            ->where('tampil_publik', true)
+            ->when($tahun !== null, fn ($q) => $q->whereYear('tanggal', $tahun))
+            ->selectRaw('YEAR(tanggal) as tahun, MONTH(tanggal) as bulan, SUM(jumlah) as total')
+            ->groupBy('tahun', 'bulan')
+            ->get()
+            ->keyBy(fn ($baris) => sprintf('%04d-%02d', $baris->tahun, $baris->bulan));
+
         $data = [];
         foreach ($bulan as $date) {
-            $masuk = (float) KasMasuk::where('tampil_publik', true)
-                ->whereYear('tanggal', $date->year)
-                ->whereMonth('tanggal', $date->month)
-                ->sum('jumlah');
-            $keluar = (float) KasKeluar::where('tampil_publik', true)
-                ->whereYear('tanggal', $date->year)
-                ->whereMonth('tanggal', $date->month)
-                ->sum('jumlah');
+            $kunci = $date->format('Y-m');
+            $masuk = (float) ($kasMasuk[$kunci]->total ?? 0) + (float) ($angsuranMasuk[$kunci]->total ?? 0);
             $data[] = [
                 'bulan' => $date->translatedFormat($tahun === null ? 'M Y' : 'M'),
                 'masuk' => $portalWarga->nominalMasuk($masuk),
-                'keluar' => $keluar,
+                'keluar' => (float) ($kasKeluar[$kunci]->total ?? 0),
             ];
         }
 
         return $data;
+    }
+
+    private function angsuranDiLuarKas(?int $tahun)
+    {
+        return Angsuran::query()
+            ->where('jumlah_bayar', '>', 0)
+            ->whereNotNull('tanggal_bayar')
+            ->whereDoesntHave('kasMasuk')
+            ->when($tahun !== null, fn ($q) => $q->whereYear('tanggal_bayar', $tahun));
     }
 }

@@ -130,23 +130,23 @@
         <span class="text-muted small fw-bold text-uppercase me-1"><i class="bi bi-funnel text-primary"></i> Status:</span>
         <a href="{{ route('pembayaran.index', array_merge(request()->except('status', 'page'), [])) }}" 
            class="btn btn-sm {{ !request()->filled('status') ? 'btn-primary' : 'btn-light border' }}">
-            Semua ({{ $stats['count_total'] }})
+            Semua
         </a>
         <a href="{{ route('pembayaran.index', array_merge(request()->except('status', 'page'), ['status' => 'bulan_ini'])) }}" 
            class="btn btn-sm {{ request('status') === 'bulan_ini' ? 'btn-primary' : 'btn-light border' }}">
-            <i class="bi bi-calendar-check"></i> Jatuh Tempo Bulan Ini ({{ $stats['count_bulan_ini'] }})
+            <i class="bi bi-calendar-check"></i> Jatuh Tempo Bulan Ini
         </a>
         <a href="{{ route('pembayaran.index', array_merge(request()->except('status', 'page'), ['status' => 'terlambat'])) }}" 
            class="btn btn-sm {{ request('status') === 'terlambat' ? 'btn-danger' : ( $stats['count_terlambat'] > 0 ? 'btn-outline-danger' : 'btn-light border' ) }}">
-            <i class="bi bi-clock-history"></i> Terlambat ({{ $stats['count_terlambat'] }})
+            <i class="bi bi-clock-history"></i> Terlambat
         </a>
         <a href="{{ route('pembayaran.index', array_merge(request()->except('status', 'page'), ['status' => 'lunas'])) }}" 
            class="btn btn-sm {{ request('status') === 'lunas' ? 'btn-success' : 'btn-light border text-success' }}">
-            <i class="bi bi-check-circle"></i> Lunas ({{ $stats['count_lunas'] }})
+            <i class="bi bi-check-circle"></i> Lunas
         </a>
         <a href="{{ route('pembayaran.index', array_merge(request()->except('status', 'page'), ['status' => 'belum_bayar'])) }}" 
            class="btn btn-sm {{ request('status') === 'belum_bayar' ? 'btn-primary' : 'btn-light border' }}">
-            <i class="bi bi-hourglass-split"></i> Belum Bayar ({{ $stats['count_belum_bayar'] }})
+            <i class="bi bi-hourglass-split"></i> Belum Bayar
         </a>
     </div>
 
@@ -282,7 +282,8 @@
 </div>
 
 <!-- Main Table Card -->
-<div class="card-custom bg-white" id="hasil-cicilan">
+<div id="hasil-cicilan">
+<div class="card-custom bg-white">
     <div class="card-header bg-white border-bottom py-3 px-4 d-flex align-items-center justify-content-between">
         <div class="d-flex align-items-center gap-2">
             <span class="fw-bold text-dark"><i class="bi bi-table text-primary me-1"></i> Daftar Jadwal &amp; Pembayaran Angsuran</span>
@@ -525,6 +526,63 @@
             {{ $angsuran->onEachSide(1)->links() }}
         </div>
     </div>
+</div>
+
+<div class="card-custom bg-white mt-4">
+    <div class="card-header bg-white border-bottom py-3 px-4 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
+        <div>
+            <span class="fw-bold text-dark"><i class="bi bi-journal-check text-success me-1"></i> Riwayat yang Membayar</span>
+            <div class="small text-muted">Pembayaran dicatat menurut tanggal bayar, bukan bulan jatuh tempo.</div>
+        </div>
+        <div class="small text-muted">
+            <strong class="text-success">{{ $riwayatBayar->total() }}</strong> pembayaran
+            · Rp {{ number_format($totalNominalRiwayat, 0, ',', '.') }}
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-custom table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Tanggal Bayar</th>
+                    <th>Blok Kavling</th>
+                    <th>Nama Pengangsur</th>
+                    <th>Cicilan</th>
+                    <th>Jatuh Tempo</th>
+                    <th class="text-end">Jumlah Dibayar</th>
+                    <th class="text-center">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($riwayatBayar as $bayar)
+                <tr>
+                    <td class="fw-semibold text-dark">{{ $bayar->tanggal_bayar->format('d/m/Y') }}</td>
+                    <td>
+                        <span class="badge bg-primary text-white fw-bold">{{ $bayar->penghuni->blok_kavling ?? '-' }}</span>
+                    </td>
+                    <td class="fw-bold text-dark">{{ $bayar->penghuni->nama_lengkap ?? '-' }}</td>
+                    <td><span class="badge bg-light text-dark border">Ke-{{ $bayar->angsuran_ke }}</span></td>
+                    <td class="text-muted">{{ $bayar->tanggal_jatuh_tempo?->format('d/m/Y') ?? '-' }}</td>
+                    <td class="text-end fw-bold text-success">Rp {{ number_format($bayar->jumlah_bayar, 0, ',', '.') }}</td>
+                    <td class="text-center">
+                        <a href="{{ route('pembayaran.show', $bayar->id) }}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-receipt"></i> Kwitansi
+                        </a>
+                    </td>
+                </tr>
+                @empty
+                <tr>
+                    <td colspan="7" class="text-center py-4 text-muted">Belum ada pembayaran angsuran pada periode ini.</td>
+                </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+    @if($riwayatBayar->hasPages())
+    <div class="card-footer bg-white border-top py-3 px-4">
+        {{ $riwayatBayar->onEachSide(1)->links() }}
+    </div>
+    @endif
+</div>
 </div>
 @include('partials.cari-ajax', ['formId' => 'form-cari-cicilan', 'hasilId' => 'hasil-cicilan', 'sinkron' => ['status-cicilan', 'info-cicilan']])
 

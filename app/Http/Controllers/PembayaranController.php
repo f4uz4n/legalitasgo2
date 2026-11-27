@@ -147,6 +147,51 @@ class PembayaranController extends Controller
 
         $angsuran = $query->paginate(20)->withQueryString();
 
+        $riwayat = Angsuran::with(['penghuni']);
+        if ($user && $user->isWarga()) {
+            $riwayat->where('penghuni_id', $user->penghuni?->id ?? 0);
+        }
+        $riwayat->where('jumlah_bayar', '>', 0)->whereNotNull('tanggal_bayar');
+
+        if (!empty($tanggalDari) && !empty($tanggalSampai)) {
+            $riwayat->whereBetween('tanggal_bayar', [$tanggalDari, $tanggalSampai]);
+        } elseif (!empty($tanggalDari)) {
+            $riwayat->whereDate('tanggal_bayar', '>=', $tanggalDari);
+        } elseif (!empty($tanggalSampai)) {
+            $riwayat->whereDate('tanggal_bayar', '<=', $tanggalSampai);
+        } elseif (!$isAll && !empty($selectedBulan)) {
+            $bagianBulan = explode('-', $selectedBulan);
+            if (count($bagianBulan) === 2) {
+                $riwayat->whereYear('tanggal_bayar', $bagianBulan[0])
+                    ->whereMonth('tanggal_bayar', $bagianBulan[1]);
+            }
+        }
+
+        if ($request->filled('nama')) {
+            $nama = $request->nama;
+            $riwayat->whereHas('penghuni', function ($q) use ($nama) {
+                $q->where('nama_lengkap', 'like', '%' . $nama . '%')
+                    ->orWhere('nik', 'like', '%' . $nama . '%');
+            });
+        }
+        if ($request->filled('rumah')) {
+            $rumah = $request->rumah;
+            $riwayat->whereHas('penghuni', function ($q) use ($rumah) {
+                $q->where('blok_kavling', 'like', '%' . $rumah . '%');
+            });
+        }
+        if ($request->filled('search')) {
+            $kata = $request->search;
+            $riwayat->whereHas('penghuni', function ($q) use ($kata) {
+                $q->where('nama_lengkap', 'like', '%' . $kata . '%')
+                    ->orWhere('blok_kavling', 'like', '%' . $kata . '%')
+                    ->orWhere('nik', 'like', '%' . $kata . '%');
+            });
+        }
+
+        $totalNominalRiwayat = (float) (clone $riwayat)->sum('jumlah_bayar');
+        $riwayatBayar = $riwayat->orderByDesc('tanggal_bayar')->orderByDesc('id')->paginate(10, ['*'], 'riwayat')->withQueryString();
+
         return view('pembayaran.index', compact(
             'angsuran',
             'stats',
@@ -155,7 +200,9 @@ class PembayaranController extends Controller
             'tanggalDari',
             'tanggalSampai',
             'isAll',
-            'sort'
+            'sort',
+            'riwayatBayar',
+            'totalNominalRiwayat'
         ));
     }
 

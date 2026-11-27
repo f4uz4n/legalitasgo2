@@ -416,21 +416,21 @@
                                          style="width: 38px; height: 38px; flex-shrink: 0;"
                                          data-bs-toggle="modal"
                                          data-bs-target="#modalPreviewBukti"
-                                         data-img="{{ Storage::url($buktiFile) }}"
+                                         data-img="{{ route('pembayaran.bukti', $a) }}"
                                          data-warga="{{ $a->penghuni->nama_lengkap ?? '-' }}"
                                          data-blok="{{ $a->penghuni->blok_kavling ?? '-' }}"
                                          data-ke="{{ $a->angsuran_ke }}"
                                          data-nominal="Rp {{ number_format($a->jumlah_bayar, 0, ',', '.') }}"
                                          data-tgl="{{ $a->tanggal_bayar ? $a->tanggal_bayar->format('d/m/Y') : '-' }}"
                                          title="Klik untuk memperbesar bukti transfer">
-                                        <img src="{{ Storage::url($buktiFile) }}" alt="Bukti" class="w-100 h-100 object-fit-cover">
+                                        <img src="{{ route('pembayaran.bukti', $a) }}" alt="Bukti" class="w-100 h-100 object-fit-cover">
                                     </div>
                                     <div>
                                         <button type="button" class="btn btn-sm btn-link p-0 text-success text-decoration-none fw-bold btn-preview-bukti d-block"
                                                 style="font-size: 0.78rem;"
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#modalPreviewBukti"
-                                                data-img="{{ Storage::url($buktiFile) }}"
+                                                data-img="{{ route('pembayaran.bukti', $a) }}"
                                                 data-warga="{{ $a->penghuni->nama_lengkap ?? '-' }}"
                                                 data-blok="{{ $a->penghuni->blok_kavling ?? '-' }}"
                                                 data-ke="{{ $a->angsuran_ke }}"
@@ -441,11 +441,11 @@
                                         <small class="text-muted" style="font-size: 0.68rem;">Tersimpan</small>
                                     </div>
                                 @elseif($isPdf)
-                                    <a href="{{ Storage::url($buktiFile) }}" target="_blank" class="badge bg-danger-subtle text-danger border border-danger-subtle py-1.5 px-2 text-decoration-none" title="Buka Dokumen PDF">
+                                    <a href="{{ route('pembayaran.bukti', $a) }}" target="_blank" class="badge bg-danger-subtle text-danger border border-danger-subtle py-1.5 px-2 text-decoration-none" title="Buka Dokumen PDF">
                                         <i class="bi bi-file-earmark-pdf-fill me-1"></i> Buka PDF
                                     </a>
                                 @else
-                                    <a href="{{ Storage::url($buktiFile) }}" target="_blank" class="badge bg-primary-subtle text-primary border border-primary-subtle py-1.5 px-2 text-decoration-none" title="Buka Berkas">
+                                    <a href="{{ route('pembayaran.bukti', $a) }}" target="_blank" class="badge bg-primary-subtle text-primary border border-primary-subtle py-1.5 px-2 text-decoration-none" title="Buka Berkas">
                                         <i class="bi bi-paperclip me-1"></i> Lihat Berkas
                                     </a>
                                 @endif
@@ -482,7 +482,7 @@
                     <td class="text-center">
                         <div class="d-inline-flex align-items-center gap-1.5">
                             @if($buktiFile)
-                                <a href="{{ Storage::url($buktiFile) }}" target="_blank" class="btn btn-sm btn-outline-success" title="Buka Berkas Bukti di Tab Baru">
+                                <a href="{{ route('pembayaran.bukti', $a) }}" target="_blank" class="btn btn-sm btn-outline-success" title="Buka Berkas Bukti di Tab Baru">
                                     <i class="bi bi-paperclip"></i>
                                 </a>
                             @endif
@@ -549,11 +549,17 @@
                     <th>Cicilan</th>
                     <th>Jatuh Tempo</th>
                     <th class="text-end">Jumlah Dibayar</th>
+                    <th>Bukti</th>
                     <th class="text-center">Aksi</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse($riwayatBayar as $bayar)
+                @php
+                    $buktiRiwayat = $bayar->bukti_bayar ?: ($bayar->kasMasuk?->bukti_file);
+                    $extRiwayat = $buktiRiwayat ? strtolower(pathinfo($buktiRiwayat, PATHINFO_EXTENSION)) : '';
+                    $gambarRiwayat = in_array($extRiwayat, ['jpg', 'jpeg', 'png', 'webp']);
+                @endphp
                 <tr>
                     <td class="fw-semibold text-dark">{{ $bayar->tanggal_bayar->format('d/m/Y') }}</td>
                     <td>
@@ -563,6 +569,20 @@
                     <td><span class="badge bg-light text-dark border">Ke-{{ $bayar->angsuran_ke }}</span></td>
                     <td class="text-muted">{{ $bayar->tanggal_jatuh_tempo?->format('d/m/Y') ?? '-' }}</td>
                     <td class="text-end fw-bold text-success">Rp {{ number_format($bayar->jumlah_bayar, 0, ',', '.') }}</td>
+                    <td>
+                        @if($buktiRiwayat)
+                            <a href="{{ route('pembayaran.bukti', $bayar) }}" target="_blank" class="btn btn-sm btn-outline-success" title="Lihat bukti lampiran">
+                                @if($gambarRiwayat)
+                                    <img src="{{ route('pembayaran.bukti', $bayar) }}" alt="Bukti" style="width:28px;height:28px;object-fit:cover;border-radius:4px" class="me-1">
+                                @else
+                                    <i class="bi bi-paperclip"></i>
+                                @endif
+                                Lihat
+                            </a>
+                        @else
+                            <span class="text-muted small">Belum ada</span>
+                        @endif
+                    </td>
                     <td class="text-center">
                         <a href="{{ route('pembayaran.show', $bayar->id) }}" class="btn btn-sm btn-outline-primary">
                             <i class="bi bi-receipt"></i> Kwitansi
@@ -571,7 +591,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="7" class="text-center py-4 text-muted">Belum ada pembayaran angsuran pada periode ini.</td>
+                    <td colspan="8" class="text-center py-4 text-muted">Belum ada pembayaran angsuran pada periode ini.</td>
                 </tr>
                 @endforelse
             </tbody>

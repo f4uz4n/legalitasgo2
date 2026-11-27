@@ -8,6 +8,7 @@ use App\Models\KategoriKas;
 use App\Models\Penghuni;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class PembayaranController extends Controller
 {
@@ -147,7 +148,7 @@ class PembayaranController extends Controller
 
         $angsuran = $query->paginate(20)->withQueryString();
 
-        $riwayat = Angsuran::with(['penghuni']);
+        $riwayat = Angsuran::with(['penghuni', 'kasMasuk']);
         if ($user && $user->isWarga()) {
             $riwayat->where('penghuni_id', $user->penghuni?->id ?? 0);
         }
@@ -311,12 +312,27 @@ class PembayaranController extends Controller
 
     public function show(Angsuran $angsuran)
     {
+        $this->pastikanBolehMelihat($angsuran);
+
+        $angsuran->load(['penghuni.perumahan', 'kasMasuk', 'pengambilanKwitansi']);
+        return view('pembayaran.show', compact('angsuran'));
+    }
+
+    public function bukti(Angsuran $angsuran)
+    {
+        $this->pastikanBolehMelihat($angsuran);
+        $angsuran->loadMissing('kasMasuk');
+        $path = $angsuran->bukti_bayar ?: $angsuran->kasMasuk?->bukti_file;
+        abort_unless($path && Storage::disk('public')->exists($path), 404);
+
+        return Storage::disk('public')->response($path);
+    }
+
+    private function pastikanBolehMelihat(Angsuran $angsuran): void
+    {
         $user = auth()->user();
         if ($user && $user->isWarga() && $angsuran->penghuni_id !== $user->penghuni?->id) {
             abort(403, 'Anda tidak memiliki hak akses untuk melihat rincian pembayaran ini.');
         }
-
-        $angsuran->load(['penghuni.perumahan', 'kasMasuk', 'pengambilanKwitansi']);
-        return view('pembayaran.show', compact('angsuran'));
     }
 }

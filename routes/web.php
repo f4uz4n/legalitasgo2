@@ -139,6 +139,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/penghuni/{penghuni}', [PenghuniController::class, 'show'])->name('penghuni.show');
 
     // Pembayaran Show — HARUS setelah /pembayaran/create
+    Route::get('/pembayaran/{angsuran}/bukti', [PembayaranController::class, 'bukti'])->name('pembayaran.bukti');
     Route::get('/pembayaran/{angsuran}', [PembayaranController::class, 'show'])->name('pembayaran.show');
 });
 

@@ -154,20 +154,21 @@
             </div>
             @endif
             <!-- Bukti Pembayaran / Struk Transfer -->
-            @if($angsuran->bukti_bayar)
+            @php $lampiranBukti = $angsuran->bukti_bayar ?: ($angsuran->kasMasuk?->bukti_file); @endphp
+            @if($lampiranBukti)
             <div class="p-3 my-4 rounded-3 border bg-light d-print-none">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <span class="fw-bold text-dark"><i class="bi bi-paperclip text-primary me-1"></i> Lampiran Bukti Pembayaran / Struk Transfer</span>
-                    <a href="{{ Storage::url($angsuran->bukti_bayar) }}" target="_blank" class="btn btn-sm btn-primary rounded-3">
+                    <a href="{{ route('pembayaran.bukti', $angsuran) }}" target="_blank" class="btn btn-sm btn-primary rounded-3">
                         <i class="bi bi-box-arrow-up-right me-1"></i> Buka File Lengkap
                     </a>
                 </div>
                 @php
-                    $ext = strtolower(pathinfo($angsuran->bukti_bayar, PATHINFO_EXTENSION));
+                    $ext = strtolower(pathinfo($lampiranBukti, PATHINFO_EXTENSION));
                 @endphp
                 @if(in_array($ext, ['jpg', 'jpeg', 'png', 'webp']))
                     <div class="text-center mt-2">
-                        <img src="{{ Storage::url($angsuran->bukti_bayar) }}" alt="Bukti Pembayaran" class="img-fluid rounded-3 border shadow-sm" style="max-height: 380px;">
+                        <img src="{{ route('pembayaran.bukti', $angsuran) }}" alt="Bukti Pembayaran" class="img-fluid rounded-3 border shadow-sm" style="max-height: 380px;">
                     </div>
                 @elseif($ext === 'pdf')
                     <div class="d-flex align-items-center gap-2 p-3 bg-white rounded-3 border mt-2">
